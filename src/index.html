@@ -1,13 +1,34 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <script src="../node_modules/xel/xel.js" type="module"></script>
+    <meta
+      name="xel-theme"
+      content="../node_modules/xel/themes/adwaita-dark.css"
+    />
+    <meta name="xel-accent-color" content="#47d1d1" />
+    <meta
+      name="xel-iconsets"
+      content="../node_modules/xel/iconsets/material.svg"
+    />
+
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="script-src 'self';" />
     <title>Hello World!</title>
-    <link rel="stylesheet" href="index.css" />
+    <link rel="stylesheet" href="./index.css" />
   </head>
   <body>
-    <h1>💖 Hello World!</h1>
-    <p>Welcome to your Electron application.</p>
+    <x-menubar size="large">
+      <x-menuitem>
+        <x-label>File</x-label>
+      </x-menuitem>
+      <x-menuitem>
+        <x-label>File</x-label>
+      </x-menuitem>
+      <x-menuitem id="exit">
+        <x-icon href="#logout"></x-icon>
+      </x-menuitem>
+    </x-menubar>
   </body>
+  <script src="render.js"></script>
 </html>

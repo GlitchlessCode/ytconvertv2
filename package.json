@@ -18,7 +18,9 @@
   },
   "license": "MIT",
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.0"
+    "electron-squirrel-startup": "^1.0.0",
+    "xel": "^0.22.2",
+    "ytdl-core": "^4.11.5"
   },
   "devDependencies": {
     "@electron-forge/cli": "^6.4.1",

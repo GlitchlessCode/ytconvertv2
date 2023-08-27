@@ -1,7 +1,15 @@
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
-  margin: auto;
-  max-width: 38rem;
-  padding: 2rem;
+}
+
+x-menubar {
+  width: calc(100% - 2rem);
+  margin: 1rem;
+  position: fixed;
+}
+
+#exit {
+  position: absolute;
+  right: 0;
 }
