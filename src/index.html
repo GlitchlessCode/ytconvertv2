@@ -45,6 +45,10 @@
             <x-icon href="#help"></x-icon>
             <x-label> Documentation </x-label>
           </x-menuitem>
+          <x-menuitem>
+            <x-icon href="#bug"></x-icon>
+            <x-label>Report Bugs</x-label>
+          </x-menuitem>
         </x-menu>
       </x-menuitem>
       <x-menuitem disabled>
@@ -60,11 +64,13 @@
           <x-icon href="#folder"></x-icon>
           <x-label>Choose Location</x-label>
         </x-tab>
-        <x-tab>
+        <x-tab value="single">
+          <x-throbber hidden></x-throbber>
           <x-icon href="#remove"></x-icon>
           <x-label>Single Video</x-label>
         </x-tab>
-        <x-tab>
+        <x-tab value="multi">
+          <x-throbber hidden></x-throbber>
           <x-icon href="#menu"></x-icon>
           <x-label>Multiple Videos</x-label>
         </x-tab>
@@ -80,9 +86,102 @@
           </x-input>
         </x-box>
         <!-- Single Video Converter -->
-        <x-box class="content" tabindex="-1" id="CONTENTsingle"> </x-box>
+        <x-box class="content" tabindex="-1" id="CONTENTsingle" vertical>
+          <x-card id="CARDsingle">
+            <main>
+              <x-input class="link">
+                <x-label>Youtube Link</x-label>
+              </x-input>
+              <x-accordion class="info">
+                <header>
+                  <x-label>Video Info</x-label>
+                </header>
+                <main></main>
+              </x-accordion>
+              <x-box>
+                <x-switch toggled class="autofetch">
+                  <x-label>Auto-Fetch</x-label>
+                </x-switch>
+                <x-buttons tracking="1" class="filetype">
+                  <x-button toggled value="mp3">
+                    <x-label>.mp3</x-label>
+                  </x-button>
+                  <x-button value="mp4">
+                    <x-label>.mp4</x-label>
+                    <x-tooltip style="--align: top">Coming soon!</x-tooltip>
+                  </x-button>
+                </x-buttons>
+                <x-buttons tracking="-1" class="buttons">
+                  <x-button value="fetch">
+                    <x-icon href="#search"></x-icon>
+                    <x-label>Fetch</x-label>
+                  </x-button>
+                  <x-button disabled value="export">
+                    <x-icon href="#send"></x-icon>
+                    <x-label>Export</x-label>
+                  </x-button>
+                  <x-button disabled value="cancel">
+                    <x-icon href="#delete"></x-icon>
+                    <x-label>Cancel</x-label>
+                  </x-button>
+                </x-buttons>
+              </x-box>
+
+              <x-progressbar size="small" value="50" max="100"> </x-progressbar>
+            </main>
+          </x-card>
+        </x-box>
         <!-- Multi Video Converter -->
-        <x-box class="content" tabindex="-1" id="CONTENTmulti"> </x-box>
+        <x-box class="content" tabindex="-1" id="CONTENTmulti" vertical>
+          <x-card id="CARDmulti">
+            <main>
+              <x-input class="link">
+                <x-label>Youtube Link</x-label>
+              </x-input>
+              <x-accordion class="info">
+                <header>
+                  <x-label>Playlist Info</x-label>
+                </header>
+                <main></main>
+              </x-accordion>
+              <x-box
+                ><x-switch class="autofetch">
+                  <x-label>Auto-Fetch</x-label>
+                </x-switch>
+                <x-buttons tracking="1" class="filetype">
+                  <x-button toggled value="mp3">
+                    <x-label>.mp3</x-label>
+                  </x-button>
+                  <x-button value="mp4">
+                    <x-label>.mp4</x-label>
+                    <x-tooltip style="--align: top">Coming soon!</x-tooltip>
+                  </x-button>
+                </x-buttons>
+                <x-buttons tracking="-1" class="buttons">
+                  <x-button value="fetch">
+                    <x-icon href="#search"></x-icon>
+                    <x-label>Fetch</x-label>
+                  </x-button>
+                  <x-button disabled value="export">
+                    <x-icon href="#send"></x-icon>
+                    <x-label>Export</x-label>
+                  </x-button>
+                  <x-button disabled value="cancel">
+                    <x-icon href="#delete"></x-icon>
+                    <x-label>Cancel</x-label>
+                  </x-button>
+                </x-buttons>
+              </x-box>
+              <x-progressbar size="small" value="50" max="100"> </x-progressbar>
+            </main>
+          </x-card>
+          <x-accordion>
+            <header>
+              <x-label>Videos</x-label>
+            </header>
+            <main></main>
+          </x-accordion>
+        </x-box>
       </div>
     </x-box>
     <dialog id="versionNotif">

@@ -9,6 +9,7 @@ x-menubar {
   position: fixed;
   margin: 0.1rem 0.1rem 0.5rem 0.1rem;
   -webkit-user-select: none;
+  user-select: none;
   -webkit-app-region: drag;
   background: var(--background-color);
   border: 1px solid var(--border-color);
@@ -29,14 +30,49 @@ body > x-box * {
   z-index: 0 !important;
 }
 
+x-box:focus {
+  outline: none !important;
+}
+
 x-card {
   margin: 0;
   width: 100%;
   padding: 0.3rem;
+  overflow-x: scroll;
 }
 
 x-button[toggled] {
   color: #078161 !important;
+}
+
+x-button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+x-buttons {
+  margin-left: 1rem;
+}
+
+x-card[fileLock]::before {
+  filter: none !important;
+  content: "File Location Invalid";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+}
+
+x-card[disabled] {
+  filter: brightness(88%) !important;
+  pointer-events: none;
+  position: relative;
+}
+
+x-card[disabled] * {
+  filter: brightness(88%) !important;
+  pointer-events: none;
 }
 
 dialog {
@@ -47,6 +83,35 @@ dialog::backdrop {
   pointer-events: none;
 }
 
+x-tab > x-icon {
+  margin-left: 5px;
+  margin-right: 8px;
+  margin-bottom: 7px;
+  margin-top: 6px;
+}
+
+x-input {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 1rem;
+}
+
+x-button[value="cancel"] {
+  background-color: #c03030 !important;
+}
+
+x-button[value="cancel"]:hover {
+  background-color: #d93030 !important;
+}
+
+x-button[value="cancel"]:active {
+  background-color: #f98080 !important;
+}
+
+x-progressbar {
+  margin-top: 0.5rem;
+}
+
 #exit {
   position: absolute;
   right: 0.2rem;
@@ -55,14 +120,11 @@ dialog::backdrop {
 #mainContent {
   align-items: center;
   width: 100%;
-}
-
-#location {
-  width: 100%;
-  max-width: none;
+  position: relative;
 }
 
 .content {
+  position: absolute;
   padding: 1.5rem;
   width: 100%;
   transition: all 660ms ease-in-out;
@@ -75,6 +137,6 @@ dialog::backdrop {
 .active {
   pointer-events: all;
   transform: translateY(0);
-  transition-delay: 660ms;
+  transition-delay: 220ms;
   opacity: 1;
 }
