@@ -1,16 +1,26 @@
 const { ipcRenderer, contextBridge } = require("electron");
 
-// Expose protected methods off of window (ie.
-// window.api.sendToA) in order to use ipcRenderer
-// without exposing the entire object
 contextBridge.exposeInMainWorld("api", {
-  sendToA: function () {
-    ipcRenderer.send("A");
+  sendDarkMode: function (darkMode) {
+    if (typeof darkMode !== "boolean")
+      throw new TypeError("Cannot invoke function with invalid parameters");
+    ipcRenderer.send("xel-dark-mode", darkMode);
   },
-  receiveFromD: function (func) {
-    ipcRenderer.on("D", (event, ...args) => func(event, ...args));
+  recieveDarkMode: function (func) {
+    ipcRenderer.on("xel-dark-mode", (event, ...args) => func(event, ...args));
+  },
+  recieveCurrentVersion: function (func) {
+    ipcRenderer.on("current-version", (event, ...args) => func(event, ...args));
+  },
+  recieveReleaseNotice: function (func) {
+    ipcRenderer.on("version-outdated", (event, ...args) =>
+      func(event, ...args)
+    );
   },
   requestWindowClose: function () {
     ipcRenderer.send("window-close-request");
+  },
+  requestOpenRelease: function () {
+    ipcRenderer.send("open-release-request");
   },
 });

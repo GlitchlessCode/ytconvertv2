@@ -1,7 +1,7 @@
 {
   "name": "ytconvertv2",
   "productName": "ytconvertv2",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "My Electron application description",
   "main": "src/index.js",
   "scripts": {
@@ -19,6 +19,7 @@
   "license": "MIT",
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
+    "electron-store": "^8.1.0",
     "xel": "^0.22.2",
     "ytdl-core": "^4.11.5"
   },

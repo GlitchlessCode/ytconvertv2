@@ -1,81 +1,114 @@
-const { app, BrowserWindow, ipcMain, screen, dialog } = require("electron");
+// APP VERSION
+const VERSION = "v1.0.1";
+
+// Imports
+const {
+  app,
+  BrowserWindow,
+  ipcMain,
+  screen,
+  dialog,
+  net,
+  shell,
+} = require("electron");
 const path = require("path");
 const ytdl = require("ytdl-core");
+const Store = require("electron-store");
+
+const store = new Store({
+  clearInvalidConfig: true,
+});
+
+let currRelease;
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require("electron-squirrel-startup")) {
   app.quit();
 }
 
-const createWindow = () => {
+const createWindow = async () => {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: Math.floor(width * 0.75),
+    width: Math.floor(width * 0.6),
     height: Math.floor(height * 0.75),
+    minHeight: 300,
+    minWidth: 300,
     webPreferences: {
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
     frame: false,
   });
+  const contents = mainWindow.webContents;
 
   // and load the index.html of the app.
-  mainWindow.loadFile(path.join(__dirname, "index.html"));
+  await mainWindow.loadFile(path.join(__dirname, "index.html"));
+  contents.send("xel-dark-mode", store.get("darkMode", true));
 
   // mainWindow.webContents.openDevTools();
 
   ipcMain.on("window-close-request", function () {
     mainWindow.close();
   });
+  ipcMain.on("xel-dark-mode", function (event, data) {
+    store.set("darkMode", data);
+  });
+  ipcMain.on("open-release-request", function () {
+    const regex =
+      /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)/;
+    if (net.online && regex.test(currRelease.url)) {
+      shell.openExternal(currRelease.url);
+      app.quit();
+    }
+  });
+
+  contents.send("current-version", VERSION);
+
+  if (net.online) {
+    currRelease = await fetchLatestRelease();
+    if (currRelease.name !== VERSION) {
+      contents.send("version-outdated", VERSION, currRelease.name);
+    }
+  } else {
+  }
 };
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.on("ready", createWindow);
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  app.quit();
 });
 
-app.on("activate", () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
-});
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
-
-// async function fetchLatestRelease() {
-//   let xmlRequest = new XMLHttpRequest();
-//   let result;
-//   let resolveFunc;
-//   xmlRequest.onreadystatechange = function() {
-//       if(this.readyState == 4) {
-//           if(this.status == 200){
-//               result = JSON.parse(this.responseText);
-//           } else {
-//               result = new Error("Ran into error fetching update");
-//           }
-//           resolveFunc();
-//       }
-//   }
-//   xmlRequest.open("GET", "https://api.github.com/repos/TurtleY0da/ytconvertv2/releases/latest");
-//   xmlRequest.send();
-//   await new Promise((resolve, reject)=>{resolveFunc = resolve});
-//   return result;
-// }
+async function fetchLatestRelease() {
+  const request = net.request({
+    method: "GET",
+    url: "https://ytconvertreleases.vercel.app",
+  });
+  let result;
+  let resolveFunc;
+  request.on("response", (response) => {
+    let body = "";
+    response.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+    response.on("end", () => {
+      result = JSON.parse(body);
+      resolveFunc();
+    });
+    response.on("error", (error) => {
+      result = new Error("Ran into error fetching update");
+      resolveFunc();
+    });
+  });
+  request.end();
+  await new Promise((resolve, reject) => {
+    resolveFunc = resolve;
+  });
+  return result;
+}
 
 // const { dialog } = require("electron");
 //   console.log(dialog.showOpenDialog({ properties: ["openDirectory"] }));
