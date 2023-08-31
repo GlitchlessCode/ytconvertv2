@@ -1,5 +1,9 @@
 # YTConvert Version 2
 
+## WARNING
+
+The version for Mac may be broken at the moment, as it only seems to be exporting mp3 files which are completely broken.
+
 ## About
 
 YTConvertV2 is an application written using [ElectronJS](https://www.electronjs.org), to extract audio (and soon video) from youtube videos, and convert them to files on your computer.
