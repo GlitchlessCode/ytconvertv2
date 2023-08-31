@@ -6,6 +6,8 @@ const themeMeta = document.querySelector('meta[name="xel-theme"]');
 
 const currVersionEl = document.querySelector("#currVersion");
 
+const thumnailsToggle = document.querySelector("#thumbnails");
+let displayThumbnails = true;
 const lightThemeBtn = document.querySelector("#lightTheme");
 const darkThemeBtn = document.querySelector("#darkTheme");
 const helpBtn = document.querySelector("#help");
@@ -79,6 +81,18 @@ const multiVideoInput = document.querySelector("#CARDmulti .link");
 const multiVideoInfo = document.querySelector("#CARDmulti .info");
 const multiVideoAutoFetch = document.querySelector("#CARDmulti .autofetch");
 const multiVideoFileType = document.querySelector("#CARDmulti .filetype");
+const multiVideoTopProgressBar = document.querySelector(
+  "#CARDmulti .videoprogress x-progressbar"
+);
+const multiVideoTopProgressText = document.querySelector(
+  "#CARDmulti .videoprogress x-label"
+);
+const multiVideoBottomProgressBar = document.querySelector(
+  "#CARDmulti .playlistprogress x-progressbar"
+);
+const multiVideoBottomProgressText = document.querySelector(
+  "#CARDmulti .playlistprogress x-label"
+);
 const multiVideoFetchBtn = document.querySelector(
   '#CARDmulti x-button[value="fetch"]'
 );
@@ -169,8 +183,18 @@ api.recieveLocation(function (event, location) {
 });
 
 api.recieveVideoProgress(function (event, value) {
-  singleVideoProgressBar.value = Math.floor(value / 4) * 4;
+  singleVideoProgressBar.value = value;
   singleVideoProgressText.innerHTML = value + "%";
+});
+
+api.recievePlaylistVideoProgress(function (event, value) {
+  multiVideoTopProgressBar.value = value;
+  multiVideoTopProgressText.innerHTML = value + "%";
+});
+
+api.recievePlaylistProgress(function (event, value) {
+  multiVideoBottomProgressBar.value = value;
+  multiVideoBottomProgressText.innerHTML = value + "%";
 });
 
 // Event Listeners
@@ -184,6 +208,10 @@ singleVideoFileType.addEventListener("toggle", resetFileType);
 multiVideoFileType.addEventListener("toggle", resetFileType);
 
 // Anonymous Event Listeners
+thumnailsToggle.addEventListener("toggle", function () {
+  displayThumbnails = !displayThumbnails;
+});
+
 navbar.addEventListener("change", function () {
   switch (navbar.value) {
     case "location":
@@ -204,6 +232,13 @@ window.onload = async () => {
   selectorContent.classList.add("active");
   await Xel.whenThemeReady;
   document.body.hidden = false;
+  const cover = document.querySelector("#cover");
+  const img = document.querySelector("#cover img");
+  await ((ms) => new Promise((r, _) => setTimeout(r, ms)))(50);
+  img.setAttribute("startup", "");
+  await ((ms) => new Promise((r, _) => setTimeout(r, ms)))(1000);
+  img.removeAttribute("startup");
+  cover.removeAttribute("startup");
 };
 
 // * Functions
@@ -336,7 +371,7 @@ function createInfoCard(info) {
     `
   <x-card class="infoCard">
     ${
-      info.thumb == undefined
+      info.thumb == undefined || displayThumbnails == false
         ? ``
         : `<img src="${info.thumb}"type="thumbnail"/>`
     }

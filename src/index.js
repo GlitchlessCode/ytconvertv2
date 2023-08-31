@@ -1,5 +1,5 @@
 // APP VERSION
-const VERSION = "v1.1.0";
+const VERSION = "v1.2.0";
 
 // Imports
 const {
@@ -45,8 +45,9 @@ const createWindow = async () => {
     height: Math.floor(height * 0.75),
     minHeight: 300,
     minWidth: 300,
+    icon: path.join(__dirname, "/images/ytconvertv2_logo.png"),
     webPreferences: {
-      // devTools: false,
+      devTools: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
@@ -61,8 +62,6 @@ const createWindow = async () => {
 
   // and load the index.html of the app.
   await mainWindow.loadFile(path.join(__dirname, "index.html"));
-
-  // mainWindow.webContents.openDevTools();
 
   webContents.send("xel-dark-mode", store.get("darkMode", true));
 
@@ -239,7 +238,7 @@ async function fetchPlaylistInfo(ytUrl) {
   const wrapper = {};
   try {
     if (!ytpl.validateID(ytUrl)) throw new Error();
-    const info = await ytpl(ytUrl);
+    const info = await ytpl(ytUrl, { pages: Infinity });
     result.fetchedUrl = ytUrl;
     result.thumb = info.bestThumbnail.url;
     result.title = info.title;
@@ -247,7 +246,7 @@ async function fetchPlaylistInfo(ytUrl) {
       avatar: info.author.avatars[info.author.avatars.length - 1],
       name: info.author.name,
     };
-    result.adjustedValue = info.estimatedItemCount;
+    result.adjustedValue = info.items.length;
     result.date = info.lastUpdated;
     wrapper.valid = true;
   } catch (error) {
@@ -322,6 +321,53 @@ function extractVideoFromURL(location, url, name, event, videoFinish) {
     videoFinish();
   });
   video.pipe(fs.createWriteStream(outputLocation));
+}
+
+let playlistReference = undefined;
+async function extractPlaylistFromURL(location, url, name, playlistFinish) {
+  let regex = /[\\\/:*?<>|]/gm;
+  let cutTitle = name.replace(regex, "_");
+  const outputLocation = `${location}/${cutTitle}`;
+  if (!fs.existsSync(outputLocation)) {
+    fs.mkdirSync(outputLocation);
+  }
+  webContents.send("playlist-progress", 0);
+  const playlist = (await ytpl(url)).items;
+  async function runList(depth) {
+    const video = playlist[depth];
+    try {
+      await new Promise((resolve, reject) => {
+        webContents.send(
+          "playlist-progress",
+          Math.floor((depth / playlist.length) * 100)
+        );
+        playlistReference = {
+          destroy: () => {
+            if (videoReference !== undefined) {
+              videoReference.destroy();
+              videoReference = undefined;
+            }
+            reject();
+          },
+        };
+        extractVideoFromURL(
+          outputLocation,
+          video.url,
+          video.title,
+          "playlist-video-progress",
+          resolve
+        );
+      });
+      if (depth < playlist.length - 1) {
+        runList(depth + 1);
+      } else {
+        webContents.send("playlist-progress", 100);
+        playlistReference = undefined;
+        playlistFinish();
+      }
+    } catch (error) {}
+  }
+  runList(0);
 }
 
 // * Async Guards (aka invocations)
@@ -581,6 +627,7 @@ const StateManager = createMachine(
                       "#StateManager.LocationSelector.enabled",
                       "#StateManager.SingleVideoFetcher.enabled.hist",
                     ],
+                    actions: "cancelPlaylistExtract",
                   },
                   FINISH_PLAYLIST_EXTRACT: {
                     target: [
@@ -588,9 +635,14 @@ const StateManager = createMachine(
                       "#StateManager.LocationSelector.enabled",
                       "#StateManager.SingleVideoFetcher.enabled.hist",
                     ],
-                    actions: assign({
-                      playlistDetails: (context, event) => undefined,
-                    }),
+                    actions: [
+                      assign({
+                        playlistDetails: (context, event) => undefined,
+                      }),
+                      () => {
+                        webContents.send("clear-input", "PLAYLIST");
+                      },
+                    ],
                   },
                 },
               },
@@ -631,8 +683,20 @@ const StateManager = createMachine(
         }
       },
       startPlaylistExtract: function (context) {
-        console.log(context);
-        // extractVideoFromURL(currLocation, )
+        extractPlaylistFromURL(
+          currLocation,
+          context.playlistDetails.fetchedUrl,
+          context.playlistDetails.title,
+          function () {
+            StateService.send("FINISH_PLAYLIST_EXTRACT");
+          }
+        );
+      },
+      cancelPlaylistExtract: function () {
+        if (playlistReference !== undefined) {
+          playlistReference.destroy();
+          playlistReference = undefined;
+        }
       },
     },
   }

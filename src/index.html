@@ -18,12 +18,15 @@
     <link rel="stylesheet" href="./index.css" />
   </head>
   <body hidden>
+    <div id="cover" startup>
+      <img src="./images/ytconvertv2_logo.svg" />
+    </div>
     <x-notification id="notification" timeout="5000"></x-notification>
     <x-menubar size="small">
       <x-menuitem>
         <x-label>View</x-label>
         <x-menu>
-          <x-menuitem togglable toggled>
+          <x-menuitem togglable toggled id="thumbnails">
             <x-label>Show Video Thumbnails</x-label>
           </x-menuitem>
           <x-menuitem>
@@ -90,7 +93,7 @@
         <x-box class="content" tabindex="-1" id="CONTENTsingle" vertical>
           <x-card id="CARDsingle">
             <main>
-              <x-input class="link">
+              <x-input class="link" tabindex="-1">
                 <x-label>Youtube Link</x-label>
               </x-input>
               <x-accordion class="info">
@@ -100,30 +103,30 @@
                 <main></main>
               </x-accordion>
               <x-box class="horizontalScroll">
-                <x-switch toggled class="autofetch">
+                <x-switch toggled class="autofetch" tabindex="-1">
                   <x-label>Auto-Fetch</x-label>
                 </x-switch>
 
                 <x-buttons tracking="-1" class="buttons">
-                  <x-button value="fetch">
+                  <x-button value="fetch" tabindex="-1">
                     <x-icon href="#search"></x-icon>
                     <x-label>Fetch</x-label>
                   </x-button>
-                  <x-button disabled value="export">
+                  <x-button disabled value="export" tabindex="-1">
                     <x-icon href="#send"></x-icon>
                     <x-label>Export</x-label>
                   </x-button>
-                  <x-button disabled value="cancel">
+                  <x-button disabled value="cancel" tabindex="-1">
                     <x-icon href="#delete"></x-icon>
                     <x-label>Cancel</x-label>
                   </x-button>
                 </x-buttons>
 
                 <x-buttons tracking="1" class="filetype">
-                  <x-button toggled value="mp3">
+                  <x-button toggled value="mp3" tabindex="-1">
                     <x-label>.mp3</x-label>
                   </x-button>
-                  <x-button value="mp4">
+                  <x-button value="mp4" tabindex="-1">
                     <x-label>.mp4</x-label>
                     <x-tooltip style="--align: top">Coming soon!</x-tooltip>
                   </x-button>
@@ -142,7 +145,7 @@
         <x-box class="content" tabindex="-1" id="CONTENTmulti" vertical>
           <x-card id="CARDmulti">
             <main>
-              <x-input class="link">
+              <x-input class="link" tabindex="-1">
                 <x-label>Youtube Link</x-label>
               </x-input>
 
@@ -153,44 +156,53 @@
                 <main></main>
               </x-accordion>
               <x-box class="horizontalScroll">
-                <x-switch class="autofetch">
+                <x-switch class="autofetch" tabindex="-1">
                   <x-label>Auto-Fetch</x-label>
                 </x-switch>
 
                 <x-buttons tracking="-1" class="buttons">
-                  <x-button value="fetch">
+                  <x-button value="fetch" tabindex="-1">
                     <x-icon href="#search"></x-icon>
                     <x-label>Fetch</x-label>
                   </x-button>
-                  <x-button disabled value="export">
+                  <x-button disabled value="export" tabindex="-1">
                     <x-icon href="#send"></x-icon>
                     <x-label>Export</x-label>
                   </x-button>
-                  <x-button disabled value="cancel">
+                  <x-button disabled value="cancel" tabindex="-1">
                     <x-icon href="#delete"></x-icon>
                     <x-label>Cancel</x-label>
                   </x-button>
                 </x-buttons>
 
                 <x-buttons tracking="1" class="filetype">
-                  <x-button toggled value="mp3">
+                  <x-button toggled value="mp3" tabindex="-1">
                     <x-label>.mp3</x-label>
                   </x-button>
-                  <x-button value="mp4">
+                  <x-button value="mp4" tabindex="-1">
                     <x-label>.mp4</x-label>
                     <x-tooltip style="--align: top">Coming soon!</x-tooltip>
                   </x-button>
                 </x-buttons>
 
                 <x-buttons>
-                  <x-button>
+                  <x-button tabindex="-1">
                     <x-label>Import File</x-label>
                     <x-tooltip style="--align: top">Coming soon!</x-tooltip>
                   </x-button>
                 </x-buttons>
               </x-box>
 
-              <x-progressbar size="small" value="0" max="100"> </x-progressbar>
+              <x-box class="videoprogress">
+                <x-label>0%</x-label>
+                <x-progressbar size="small" value="0" max="100">
+                </x-progressbar>
+              </x-box>
+              <x-box class="playlistprogress">
+                <x-label>0%</x-label>
+                <x-progressbar size="small" value="0" max="100">
+                </x-progressbar>
+              </x-box>
             </main>
           </x-card>
           <x-accordion>

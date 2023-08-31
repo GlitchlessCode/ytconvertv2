@@ -1,6 +1,7 @@
 module.exports = {
   packagerConfig: {
     asar: true,
+    icon: "./src/images/ytconvertv2_logo",
   },
   rebuildConfig: {},
   makers: [

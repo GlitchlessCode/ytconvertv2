@@ -69,6 +69,16 @@ contextBridge.exposeInMainWorld("api", {
       func(event, ...args);
     });
   },
+  recievePlaylistVideoProgress(func) {
+    ipcRenderer.on("playlist-video-progress", (event, ...args) => {
+      func(event, ...args);
+    });
+  },
+  recievePlaylistProgress(func) {
+    ipcRenderer.on("playlist-progress", (event, ...args) => {
+      func(event, ...args);
+    });
+  },
   requestWindowClose: function () {
     ipcRenderer.send("window-close-request");
   },

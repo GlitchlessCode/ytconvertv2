@@ -124,6 +124,10 @@ x-progressbar {
   margin-left: 0.5rem;
 }
 
+.videoprogress x-progressbar::part(bar) {
+  transition: width 0s;
+}
+
 img[type="avatar"] {
   border-radius: 50%;
   width: 32px;
@@ -185,4 +189,36 @@ img[type="thumbnail"] {
 .horizontalScroll {
   padding-left: 1rem;
   overflow-x: scroll;
+}
+
+#cover {
+  position: fixed;
+  z-index: 150;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+  background-color: var(--background-color);
+  transition: 1000ms;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#cover img {
+  opacity: 0;
+  transition: 800ms;
+  width: 20%;
+}
+
+#cover[startup] {
+  opacity: 1;
+  transition: 0ms;
+}
+
+#cover img[startup] {
+  opacity: 1;
+  transition: 500ms;
 }
