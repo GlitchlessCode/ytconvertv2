@@ -2,7 +2,7 @@
 
 ## WARNING
 
-The version for Mac may be broken at the moment, as it only seems to be exporting mp3 files which are completely broken.
+I made some mistakes, and it is trying to wrap an opus codec with a mpeg3 container (which causes issues). However, to maintain speed, and because .ogg is a higher quality than .mp3, I will send out a patch soon-ish to change up the wording and systems to reflect a switch to .ogg exports. I may end up coming back and adding a ffmpeg-powered system to convert to .mp3, but until then, this is what you get.
 
 ## About
 
