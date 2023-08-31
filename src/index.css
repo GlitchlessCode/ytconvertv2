@@ -2,6 +2,18 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
   position: absolute;
+  overflow-x: hidden !important;
+}
+
+body > footer {
+  position: fixed;
+  bottom: 0.2rem;
+  left: 0.14rem;
+  z-index: 99;
+}
+
+x-swatch {
+  margin-right: 0.3rem;
 }
 
 x-menubar {
@@ -109,7 +121,17 @@ x-button[value="cancel"]:active {
 }
 
 x-progressbar {
-  margin-top: 0.5rem;
+  margin-left: 0.5rem;
+}
+
+img[type="avatar"] {
+  border-radius: 50%;
+  width: 32px;
+  margin-right: 0.5rem;
+}
+img[type="thumbnail"] {
+  width: 100%;
+  border-radius: 6px;
 }
 
 #exit {
@@ -139,4 +161,28 @@ x-progressbar {
   transform: translateY(0);
   transition-delay: 220ms;
   opacity: 1;
+}
+
+.infoCard {
+  display: grid;
+  grid-template-columns: 50% 50%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  margin-top: 0.3rem;
+  margin-bottom: 0.3rem;
+}
+
+.infoCard h2 {
+  margin-top: 0.4rem;
+  margin-bottom: 0.1rem;
+}
+
+.infoCard h4 {
+  margin-bottom: 0.4rem;
+}
+
+.horizontalScroll {
+  padding-left: 1rem;
+  overflow-x: scroll;
 }

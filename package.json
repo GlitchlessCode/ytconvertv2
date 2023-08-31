@@ -1,7 +1,7 @@
 {
   "name": "ytconvertv2",
   "productName": "ytconvertv2",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "My Electron application description",
   "main": "src/index.js",
   "scripts": {
@@ -13,7 +13,7 @@
   },
   "keywords": [],
   "author": {
-    "name": "TurtleY0da",
+    "name": "GlitchlessCode",
     "email": "timothy.veugelers@gmail.com"
   },
   "license": "MIT",
@@ -22,7 +22,8 @@
     "electron-store": "^8.1.0",
     "xel": "^0.22.2",
     "xstate": "^4.38.2",
-    "ytdl-core": "^4.11.5"
+    "ytdl-core": "^4.11.5",
+    "ytpl": "^2.3.0"
   },
   "devDependencies": {
     "@electron-forge/cli": "^6.4.1",

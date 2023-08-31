@@ -1,5 +1,5 @@
 // APP VERSION
-const VERSION = "v1.0.2";
+const VERSION = "v1.1.0";
 
 // Imports
 const {
@@ -13,19 +13,27 @@ const {
 } = require("electron");
 const path = require("path");
 const ytdl = require("ytdl-core");
+const ytpl = require("ytpl");
 const Store = require("electron-store");
-const { createMachine, interpret } = require("xstate");
+const { createMachine, interpret, assign } = require("xstate");
+const fs = require("fs");
+const { raise } = require("xstate/lib/actions");
 
 const store = new Store({
   clearInvalidConfig: true,
 });
 
 let currRelease;
+let currStatus;
+let currLocation = store.get("location", undefined);
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require("electron-squirrel-startup")) {
   app.quit();
 }
+
+/** @type {import("electron").WebContents} */
+let webContents;
 
 const createWindow = async () => {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -38,18 +46,25 @@ const createWindow = async () => {
     minHeight: 300,
     minWidth: 300,
     webPreferences: {
+      // devTools: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
     frame: false,
   });
-  const contents = mainWindow.webContents;
+
+  webContents = mainWindow.webContents;
+
+  mainWindow.setBackgroundColor(
+    store.get("darkMode", true) ? "#242424" : "#f5f5f5"
+  );
 
   // and load the index.html of the app.
   await mainWindow.loadFile(path.join(__dirname, "index.html"));
-  contents.send("xel-dark-mode", store.get("darkMode", true));
 
   // mainWindow.webContents.openDevTools();
+
+  webContents.send("xel-dark-mode", store.get("darkMode", true));
 
   ipcMain.on("window-close-request", function () {
     mainWindow.close();
@@ -65,34 +80,60 @@ const createWindow = async () => {
       app.quit();
     }
   });
-  ipcMain.on("xstate-event", function (event, data) {
-    const snapshot = StateService.send(data);
-    contents.send(
-      "xstate-transitioned",
-      generateInterpretation(snapshot.value)
-    );
+  ipcMain.on("open-wiki-request", function () {
+    const regex =
+      /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)/;
+    if (net.online && regex.test(currRelease.wiki)) {
+      shell.openExternal(currRelease.wiki);
+    }
+  });
+  ipcMain.on("open-issues-request", function () {
+    const regex =
+      /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)/;
+    if (net.online && regex.test(currRelease.issues)) {
+      shell.openExternal(currRelease.issues);
+    }
+  });
+  ipcMain.on("xstate-event", async function (event, eventName, data) {
+    StateService.send(eventName, { data: data });
   });
 
-  contents.send("current-version", VERSION);
+  ipcMain.on("location-select-request", async function () {
+    if (currStatus.LocationSection === true) {
+      const location = await dialog.showOpenDialog({
+        properties: ["openDirectory"],
+      });
+      if (!location.canceled) {
+        currLocation = location.filePaths[0].replaceAll("\\", "/");
+        store.set("location", currLocation);
+      }
+      StateService.send("ENTER_LOCATION");
+      webContents.send("location", currLocation);
+    }
+  });
+
+  StateService.onTransition(() => {
+    const snapshot = StateService.getSnapshot();
+    currStatus = generateInterpretation(snapshot.value);
+    webContents.send("xstate-transitioned", currStatus, snapshot.context);
+  });
 
   StateService.start();
-  const snapshot = StateService.send("INIT");
-  contents.send("xstate-transitioned", generateInterpretation(snapshot.value));
+  StateService.send("INIT");
+
+  webContents.send("current-version", VERSION);
+
+  webContents.send("location", currLocation);
+
+  webContents.send("connection-status", net.online);
 
   if (net.online) {
     currRelease = await fetchLatestRelease();
     if (currRelease.name !== VERSION) {
-      contents.send("version-outdated", VERSION, currRelease.name);
+      webContents.send("version-outdated", VERSION, currRelease.name);
     }
-  } else {
   }
 };
-
-app.on("ready", createWindow);
-
-app.on("window-all-closed", () => {
-  app.quit();
-});
 
 // * Functions
 
@@ -124,18 +165,98 @@ async function fetchLatestRelease() {
   return result;
 }
 
-// const { dialog } = require("electron");
-//   console.log(dialog.showOpenDialog({ properties: ["openDirectory"] }));
-
-async function fetchThumbnail() {
+async function fetchVideoInfo(ytUrl) {
+  const result = {
+    fetchedUrl: undefined,
+    thumb: undefined,
+    title: undefined,
+    author: undefined,
+    adjustedValue: undefined,
+    adjustedValueTitle: "Duration",
+    date: undefined,
+  };
+  const wrapper = {};
   try {
-    let thumbnails = (
-      await ytdl.getInfo("https://www.youtube.com/watch?v=LpGotn0m_zs")
-    ).videoDetails.thumbnails;
-    return thumbnails[thumbnails.length - 1].url;
+    if (!ytdl.validateURL(ytUrl)) throw new Error();
+    const info = (await ytdl.getInfo(ytUrl)).videoDetails;
+    const thumbnails = info.thumbnails;
+    const date = new Date(info.publishDate);
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+
+    const totalSeconds = parseInt(info.lengthSeconds);
+    const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+    const minutes = (Math.floor(totalSeconds / 60) % 60)
+      .toString()
+      .padStart(2, "0");
+    const hours = Math.floor(totalSeconds / 3600)
+      .toString()
+      .padStart(2, "0");
+
+    result.fetchedUrl = ytUrl;
+    result.thumb = thumbnails[thumbnails.length - 1].url;
+    result.title = info.title;
+    result.author = {
+      avatar: info.author.thumbnails[0],
+      name: info.author.name,
+    };
+    result.adjustedValue = `${hours}:${minutes}:${seconds}`;
+    result.date = `Uploaded on <b>${
+      months[date.getUTCMonth()]
+    } ${date.getUTCDate()}, ${date.getUTCFullYear()}</b>`;
+    wrapper.valid = true;
   } catch (error) {
-    return "https://placehold.co/1920x1080";
+    result.title = "No Video Found";
+    result.thumb = "https://placehold.co/1920x1080";
+    wrapper.valid = false;
   }
+  wrapper.result = result;
+  return wrapper;
+}
+
+async function fetchPlaylistInfo(ytUrl) {
+  const result = {
+    fetchedUrl: undefined,
+    thumb: undefined,
+    title: undefined,
+    author: undefined,
+    adjustedValue: undefined,
+    adjustedValueTitle: "Videos",
+    date: undefined,
+  };
+  const wrapper = {};
+  try {
+    if (!ytpl.validateID(ytUrl)) throw new Error();
+    const info = await ytpl(ytUrl);
+    result.fetchedUrl = ytUrl;
+    result.thumb = info.bestThumbnail.url;
+    result.title = info.title;
+    result.author = {
+      avatar: info.author.avatars[info.author.avatars.length - 1],
+      name: info.author.name,
+    };
+    result.adjustedValue = info.estimatedItemCount;
+    result.date = info.lastUpdated;
+    wrapper.valid = true;
+  } catch (error) {
+    result.title = "No Playlist Found";
+    result.thumb = "https://placehold.co/1920x1080";
+    wrapper.valid = false;
+  }
+  wrapper.result = result;
+  return wrapper;
 }
 
 function parseStateTree(obj) {
@@ -180,9 +301,44 @@ function generateInterpretation(obj) {
     MultiCancelBtn:
       !!parsedTree.MultiVideoFetcher.enabled &&
       !!parsedTree.MultiVideoFetcher.enabled.extracting,
-    FileLocationValid: true,
+    FileLocationValid: fs.existsSync(currLocation),
   };
   return result;
+}
+
+let videoReference = undefined;
+function extractVideoFromURL(location, url, name, event, videoFinish) {
+  let regex = /[\\\/:*?<>|]/gm;
+  let cutTitle = name.replace(regex, "_");
+  const outputLocation = `${location}/${cutTitle}.mp3`;
+  const video = ytdl(url, { filter: "audioonly", quality: "highestaudio" });
+  webContents.send(event, 0);
+  video.addListener("progress", function (_, current, total) {
+    webContents.send(event, Math.floor((current / total) * 100));
+  });
+  videoReference = video;
+  video.addListener("end", function () {
+    videoReference = undefined;
+    videoFinish();
+  });
+  video.pipe(fs.createWriteStream(outputLocation));
+}
+
+// * Async Guards (aka invocations)
+async function validVideoUrl(context, { data }) {
+  const info = await fetchVideoInfo(data);
+  if (info.valid) {
+    return info;
+  }
+  throw info;
+}
+
+async function validPlaylistUrl(context, { data }) {
+  const info = await fetchPlaylistInfo(data);
+  if (info.valid) {
+    return info;
+  }
+  throw info;
 }
 
 // * State Machine
@@ -191,13 +347,17 @@ const StateManager = createMachine(
     type: "parallel",
     id: "StateManager",
     predictableActionArguments: true,
+    context: {
+      videoDetails: undefined,
+      playlistDetails: undefined,
+    },
     states: {
       LocationSelector: {
         initial: "init",
         states: {
           enabled: {
             on: {
-              ENTER_URL: [
+              ENTER_LOCATION: [
                 {
                   target: [
                     "#StateManager.SingleVideoFetcher.enabled.hist",
@@ -245,24 +405,59 @@ const StateManager = createMachine(
                 on: {
                   FETCH_VIDEO_URL: [
                     {
-                      target: "ready",
-                      cond: "validVideoUrl",
+                      target: "validate_video_url",
+                      cond: "validLocation",
+                    },
+                    {
+                      target: "not_ready",
+                      actions: raise("ENTER_LOCATION"),
                     },
                   ],
+                },
+              },
+              validate_video_url: {
+                invoke: {
+                  src: validVideoUrl,
+                  onDone: {
+                    target: "ready",
+                    actions: assign({
+                      videoDetails: (context, event) => event.data.result,
+                    }),
+                  },
+                  onError: {
+                    target: "not_ready",
+                    actions: assign({
+                      videoDetails: (context, event) => event.data.result,
+                    }),
+                  },
                 },
               },
               ready: {
                 on: {
                   VIDEO_URL_CHANGE: {
                     target: "not_ready",
-                  },
-                  START_VIDEO_EXTRACT: {
-                    target: [
-                      "extracting",
-                      "#StateManager.LocationSelector.disabled",
-                      "#StateManager.MultiVideoFetcher.disabled",
+                    actions: [
+                      assign({
+                        videoDetails: (context, event) => undefined,
+                      }),
+                      raise("ENTER_LOCATION"),
                     ],
                   },
+                  START_VIDEO_EXTRACT: [
+                    {
+                      target: [
+                        "extracting",
+                        "#StateManager.LocationSelector.disabled",
+                        "#StateManager.MultiVideoFetcher.disabled",
+                      ],
+                      cond: "validLocation",
+                      actions: "startVideoExtract",
+                    },
+                    {
+                      target: "ready",
+                      actions: raise("ENTER_LOCATION"),
+                    },
+                  ],
                 },
               },
               extracting: {
@@ -273,12 +468,21 @@ const StateManager = createMachine(
                       "#StateManager.LocationSelector.enabled",
                       "#StateManager.MultiVideoFetcher.enabled.hist",
                     ],
+                    actions: "cancelVideoExtract",
                   },
                   FINISH_VIDEO_EXTRACT: {
                     target: [
                       "not_ready",
                       "#StateManager.LocationSelector.enabled",
                       "#StateManager.MultiVideoFetcher.enabled.hist",
+                    ],
+                    actions: [
+                      assign({
+                        videoDetails: (context, event) => undefined,
+                      }),
+                      () => {
+                        webContents.send("clear-input", "VIDEO");
+                      },
                     ],
                   },
                 },
@@ -314,24 +518,59 @@ const StateManager = createMachine(
                 on: {
                   FETCH_PLAYLIST_URL: [
                     {
-                      target: "ready",
-                      cond: "validVideoUrl",
+                      target: "validate_playlist_url",
+                      cond: "validLocation",
+                    },
+                    {
+                      target: "not_ready",
+                      actions: raise("ENTER_LOCATION"),
                     },
                   ],
+                },
+              },
+              validate_playlist_url: {
+                invoke: {
+                  src: validPlaylistUrl,
+                  onDone: {
+                    target: "ready",
+                    actions: assign({
+                      playlistDetails: (context, event) => event.data.result,
+                    }),
+                  },
+                  onError: {
+                    target: "not_ready",
+                    actions: assign({
+                      playlistDetails: (context, event) => event.data.result,
+                    }),
+                  },
                 },
               },
               ready: {
                 on: {
                   PLAYLIST_URL_CHANGE: {
                     target: "not_ready",
-                  },
-                  START_PLAYLIST_EXTRACT: {
-                    target: [
-                      "extracting",
-                      "#StateManager.LocationSelector.disabled",
-                      "#StateManager.SingleVideoFetcher.disabled",
+                    actions: [
+                      assign({
+                        playlistDetails: (context, event) => undefined,
+                      }),
+                      raise("ENTER_LOCATION"),
                     ],
                   },
+                  START_PLAYLIST_EXTRACT: [
+                    {
+                      target: [
+                        "extracting",
+                        "#StateManager.LocationSelector.disabled",
+                        "#StateManager.SingleVideoFetcher.disabled",
+                      ],
+                      cond: "validLocation",
+                      actions: "startPlaylistExtract",
+                    },
+                    {
+                      target: "ready",
+                      actions: raise("ENTER_LOCATION"),
+                    },
+                  ],
                 },
               },
               extracting: {
@@ -349,6 +588,9 @@ const StateManager = createMachine(
                       "#StateManager.LocationSelector.enabled",
                       "#StateManager.SingleVideoFetcher.enabled.hist",
                     ],
+                    actions: assign({
+                      playlistDetails: (context, event) => undefined,
+                    }),
                   },
                 },
               },
@@ -367,16 +609,39 @@ const StateManager = createMachine(
   {
     guards: {
       validLocation: function () {
-        return true;
+        return fs.existsSync(currLocation);
       },
-      validVideoUrl: function () {
-        return true;
+    },
+    actions: {
+      startVideoExtract: function (context) {
+        extractVideoFromURL(
+          currLocation,
+          context.videoDetails.fetchedUrl,
+          context.videoDetails.title,
+          "video-progress",
+          function () {
+            StateService.send("FINISH_VIDEO_EXTRACT");
+          }
+        );
       },
-      validPlaylistUrl: function () {
-        return true;
+      cancelVideoExtract: function () {
+        if (videoReference !== undefined) {
+          videoReference.destroy();
+          videoReference = undefined;
+        }
+      },
+      startPlaylistExtract: function (context) {
+        console.log(context);
+        // extractVideoFromURL(currLocation, )
       },
     },
   }
 );
 
 const StateService = interpret(StateManager);
+
+app.on("ready", createWindow);
+
+app.on("window-all-closed", () => {
+  app.quit();
+});
