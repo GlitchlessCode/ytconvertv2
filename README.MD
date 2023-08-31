@@ -1,8 +1,10 @@
 # YTConvert Version 2
 
-## WARNING
+## NOTICE
 
-I made some mistakes, and it is trying to wrap an opus codec with a mpeg3 container (which causes issues). However, to maintain speed, and because .ogg is a higher quality than .mp3, I will send out a patch soon-ish to change up the wording and systems to reflect a switch to .ogg exports. I may end up coming back and adding a ffmpeg-powered system to convert to .mp3, but until then, this is what you get.
+Going to be reworking the entire output system to also incorporate a final ffmpeg conversion step. This will increase the time to fully download a file, but will make it actually do what I'm trying to get it to do.
+The app "technically" works right now, though it's technically shoving a .mp3 file extension onto a mkv(opus) file.
+I recommend waiting to use this app until the next major release, at which point this notice will be removed.
 
 ## About
 
