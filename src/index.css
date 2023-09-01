@@ -39,7 +39,7 @@ body > x-box {
 }
 
 body > x-box * {
-  z-index: 0 !important;
+  z-index: 0;
 }
 
 x-box:focus {
@@ -64,6 +64,10 @@ x-button {
 
 x-buttons {
   margin-left: 1rem;
+}
+
+x-select {
+  margin-left: 0.4rem;
 }
 
 x-card[fileLock]::before {
@@ -187,8 +191,30 @@ img[type="thumbnail"] {
 }
 
 .horizontalScroll {
+  position: relative;
+  z-index: 30;
   padding-left: 1rem;
   overflow-x: scroll;
+}
+
+.horizontalScroll x-select x-menu {
+  position: relative;
+  z-index: 30;
+}
+
+.horizontalScroll x-select x-menu x-menuitem {
+  position: relative;
+  z-index: 30;
+}
+
+.filestats {
+  margin-top: 0.2rem;
+  margin-bottom: 0.6rem;
+  margin-left: 0;
+}
+
+.filestats x-button {
+  pointer-events: none;
 }
 
 #cover {

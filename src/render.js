@@ -51,6 +51,7 @@ const singleVideoInput = document.querySelector("#CARDsingle .link");
 const singleVideoInfo = document.querySelector("#CARDsingle .info");
 const singleVideoAutoFetch = document.querySelector("#CARDsingle .autofetch");
 const singleVideoFileType = document.querySelector("#CARDsingle .filetype");
+const singleVideoFileSelect = document.querySelector("#CARDsingle .fileselect");
 const singleVideoProgressBar = document.querySelector(
   "#CARDsingle .videoprogress x-progressbar"
 );
@@ -74,6 +75,7 @@ registerToolbar(
   singleVideoAutoFetch,
   singleVideoInput
 );
+const singleVideoFileStats = document.querySelector("#CARDsingle .filestats");
 
 // Multi Content
 const multiVideoCard = document.querySelector("#CARDmulti");
@@ -81,6 +83,7 @@ const multiVideoInput = document.querySelector("#CARDmulti .link");
 const multiVideoInfo = document.querySelector("#CARDmulti .info");
 const multiVideoAutoFetch = document.querySelector("#CARDmulti .autofetch");
 const multiVideoFileType = document.querySelector("#CARDmulti .filetype");
+const multiVideoFileSelect = document.querySelector("#CARDmulti .fileselect");
 const multiVideoTopProgressBar = document.querySelector(
   "#CARDmulti .videoprogress x-progressbar"
 );
@@ -111,6 +114,7 @@ registerToolbar(
   multiVideoAutoFetch,
   multiVideoInput
 );
+const multiVideoFileStats = document.querySelector("#CARDmulti .filestats");
 
 // Version Notification
 /** @type {HTMLDialogElement} */
@@ -119,6 +123,28 @@ const versionDialog = document.querySelector("#versionNotif");
 const versionText = document.querySelector("#versionOutput");
 const versionIgnoreBtn = document.querySelector("#versionIgnore");
 const versionDownloadBtn = document.querySelector("#versionDownload");
+
+// File Stat Table
+const fileStats = {
+  wav: {
+    speed: "#00ff00",
+    qual: "#00ff00",
+    size: "#ff0000",
+    comp: "#00ff00",
+  },
+  ogg: {
+    speed: "#ffff00",
+    qual: "##aaff00",
+    size: "#00ff00",
+    comp: "#ff9900",
+  },
+  mp3: {
+    speed: "#ffcc00",
+    qual: "#ffcc00",
+    size: "#c3ff00",
+    comp: "#00ff00",
+  },
+};
 
 // Variables
 let videoDetailHash = new Uint8Array();
@@ -203,9 +229,38 @@ darkThemeBtn.addEventListener("click", setColorMode.bind(setColorMode, true));
 helpBtn.addEventListener("click", api.requestOpenWiki);
 bugBtn.addEventListener("click", api.requestOpenIssues);
 closeButton.addEventListener("click", api.requestWindowClose);
-
-singleVideoFileType.addEventListener("toggle", resetFileType);
-multiVideoFileType.addEventListener("toggle", resetFileType);
+singleVideoFileType.addEventListener(
+  "toggle",
+  setupSelectBox.bind(
+    singleVideoFileType,
+    singleVideoFileSelect,
+    singleVideoFileStats
+  )
+);
+multiVideoFileType.addEventListener(
+  "toggle",
+  setupSelectBox.bind(
+    multiVideoFileType,
+    multiVideoFileSelect,
+    multiVideoFileStats
+  )
+);
+singleVideoFileSelect.addEventListener("change", (event) => {
+  selectorChange(
+    event,
+    "video",
+    singleVideoFileType.value,
+    singleVideoFileStats
+  );
+});
+multiVideoFileSelect.addEventListener("change", (event) => {
+  selectorChange(
+    event,
+    "playlist",
+    multiVideoFileType.value,
+    multiVideoFileStats
+  );
+});
 
 // Anonymous Event Listeners
 thumnailsToggle.addEventListener("toggle", function () {
@@ -234,7 +289,7 @@ window.onload = async () => {
   document.body.hidden = false;
   const cover = document.querySelector("#cover");
   const img = document.querySelector("#cover img");
-  await ((ms) => new Promise((r, _) => setTimeout(r, ms)))(50);
+  await ((ms) => new Promise((r, _) => setTimeout(r, ms)))(150);
   img.setAttribute("startup", "");
   await ((ms) => new Promise((r, _) => setTimeout(r, ms)))(1000);
   img.removeAttribute("startup");
@@ -302,6 +357,7 @@ async function interpretState(event, newState, context) {
   singleVideoExtractBtn.disabled = !newState.SingleExtractBtn;
   singleVideoFileType.children[0].disabled = !newState.SingleExtractBtn;
   singleVideoFileType.children[1].disabled = !newState.SingleExtractBtn;
+  singleVideoFileSelect.disabled = !newState.SingleExtractBtn;
 
   singleVideoCancelBtn.disabled = !newState.SingleCancelBtn;
   navbarSingleImg.showSpinner(newState.SingleCancelBtn);
@@ -313,6 +369,7 @@ async function interpretState(event, newState, context) {
   multiVideoExtractBtn.disabled = !newState.MultiExtractBtn;
   multiVideoFileType.children[0].disabled = !newState.MultiExtractBtn;
   multiVideoFileType.children[1].disabled = !newState.MultiExtractBtn;
+  multiVideoFileSelect.disabled = !newState.MultiExtractBtn;
 
   multiVideoCancelBtn.disabled = !newState.MultiCancelBtn;
   navbarMultiImg.showSpinner(newState.MultiCancelBtn);
@@ -444,9 +501,51 @@ function registerToolbar(
   });
 }
 
-// ! TEMPORARY !
-function resetFileType() {
-  if (this.value !== "mp3") {
-    this.value = "mp3";
+/**
+ *
+ * @param {HTMLElement} selector
+ * @param {HTMLElement} filestatsEl
+ */
+function setupSelectBox(selector, filestatsEl) {
+  /*
+  ! For the future
+  const items = selector.querySelectorAll("x-menuitem");
+  const labels = selector.querySelectorAll("x-label");
+  if (this.value === "video") {
+    items[0].setAttribute("value", "mp4");
+    items[1].setAttribute("value", "mov");
+    items[2].setAttribute("value", "mkv");
+    labels[0].innerHTML = ".mp4";
+    labels[1].innerHTML = ".mov";
+    labels[2].innerHTML = ".mkv";
+    selector.value = "mp4";
+  } else {
+    
+  items[0].setAttribute("value", "wav");
+  items[1].setAttribute("value", "ogg");
+  items[2].setAttribute("value", "mp3");
+  labels[0].innerHTML = ".wav";
+  labels[1].innerHTML = ".ogg";
+  labels[2].innerHTML = ".mp3";
+  selector.value = "wav";
+  */
+  const colours = filestatsEl.querySelectorAll("x-swatch");
+  colours[0].value = fileStats[selector.value].speed;
+  colours[1].value = fileStats[selector.value].qual;
+  colours[2].value = fileStats[selector.value].size;
+  colours[3].value = fileStats[selector.value].comp;
+  /*
   }
+  selector.innerHTML = html;
+  */
+  this.value = "audio";
+}
+
+function selectorChange(event, exportType, fileType, filestatsEl) {
+  const colours = filestatsEl.querySelectorAll("x-swatch");
+  colours[0].value = fileStats[event.detail.newValue].speed;
+  colours[1].value = fileStats[event.detail.newValue].qual;
+  colours[2].value = fileStats[event.detail.newValue].size;
+  colours[3].value = fileStats[event.detail.newValue].comp;
+  api.sendSelectorState(exportType, fileType, event.detail.newValue);
 }

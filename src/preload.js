@@ -33,6 +33,45 @@ contextBridge.exposeInMainWorld("api", {
       ipcRenderer.send("xstate-event", `${event}`);
     }
   },
+  sendSelectorState: function (exportType, fileType, fileExtension) {
+    if (
+      typeof exportType !== "string" ||
+      !(exportType === "video" || exportType === "playlist")
+    )
+      throw new TypeError("Cannot invoke function with invalid parameters");
+    if (
+      typeof fileType !== "string" ||
+      !((fileType === "audio") /*|| fileType === "video"*/)
+    )
+      throw new TypeError("Cannot invoke function with invalid parameters");
+    if (fileType === "audio") {
+      if (
+        typeof fileExtension !== "string" ||
+        !(
+          fileExtension === "wav" ||
+          fileExtension === "mp3" ||
+          fileExtension === "ogg"
+        )
+      )
+        throw new TypeError("Cannot invoke function with invalid parameters");
+    } else {
+      if (
+        typeof fileExtension !== "string" ||
+        !(
+          fileExtension === "mp4" ||
+          fileExtension === "mov" ||
+          fileExtension === "mkv"
+        )
+      )
+        throw new TypeError("Cannot invoke function with invalid parameters");
+    }
+    ipcRenderer.send(
+      "selector-change",
+      `${exportType}`,
+      `${fileType}`,
+      `${fileExtension}`
+    );
+  },
   recieveDarkMode: function (func) {
     ipcRenderer.on("xel-dark-mode", (event, ...args) => func(event, ...args));
   },

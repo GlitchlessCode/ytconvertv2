@@ -123,15 +123,49 @@
                 </x-buttons>
 
                 <x-buttons tracking="1" class="filetype">
-                  <x-button toggled value="mp3" tabindex="-1">
-                    <x-label>.mp3</x-label>
+                  <x-button toggled value="audio" tabindex="-1">
+                    <x-label>Audio</x-label>
                   </x-button>
-                  <x-button value="mp4" tabindex="-1">
-                    <x-label>.mp4</x-label>
+                  <x-button value="video" tabindex="-1">
+                    <x-label>Video</x-label>
                     <x-tooltip style="--align: top">Coming soon!</x-tooltip>
                   </x-button>
                 </x-buttons>
+                <x-select class="fileselect">
+                  <x-menu>
+                    <x-menuitem value="wav" toggled>
+                      <x-label>.wav</x-label>
+                    </x-menuitem>
+                    <x-menuitem value="ogg">
+                      <x-label>.ogg</x-label>
+                    </x-menuitem>
+                    <x-menuitem value="mp3">
+                      <x-label>.mp3</x-label>
+                    </x-menuitem>
+                  </x-menu>
+                </x-select>
               </x-box>
+
+              <x-buttons class="filestats">
+                <x-button size="small" condensed>
+                  <x-label>Export Speed:&nbsp;</x-label>
+                  <x-swatch value="#00ff00"></x-swatch>
+                </x-button>
+                <x-button size="small" condensed>
+                  <x-label>Quality:&nbsp;</x-label>
+                  <x-swatch value="#00ff00"></x-swatch>
+                </x-button>
+                <x-button size="small" condensed>
+                  <x-label>File Size:&nbsp;</x-label>
+                  <x-swatch value="#ff0000"></x-swatch>
+                </x-button>
+                <x-button size="small" condensed>
+                  <x-label>Compatability:&nbsp;</x-label>
+                  <x-swatch value="#00ff00"></x-swatch>
+                </x-button>
+              </x-buttons>
+
+              <hr />
 
               <x-box class="videoprogress">
                 <x-label>0%</x-label>
@@ -176,14 +210,27 @@
                 </x-buttons>
 
                 <x-buttons tracking="1" class="filetype">
-                  <x-button toggled value="mp3" tabindex="-1">
-                    <x-label>.mp3</x-label>
+                  <x-button toggled value="audio" tabindex="-1">
+                    <x-label>Audio</x-label>
                   </x-button>
-                  <x-button value="mp4" tabindex="-1">
-                    <x-label>.mp4</x-label>
+                  <x-button value="video" tabindex="-1">
+                    <x-label>Video</x-label>
                     <x-tooltip style="--align: top">Coming soon!</x-tooltip>
                   </x-button>
                 </x-buttons>
+                <x-select class="fileselect">
+                  <x-menu>
+                    <x-menuitem value="wav" toggled>
+                      <x-label>.wav</x-label>
+                    </x-menuitem>
+                    <x-menuitem value="ogg">
+                      <x-label>.ogg</x-label>
+                    </x-menuitem>
+                    <x-menuitem value="mp3">
+                      <x-label>.mp3</x-label>
+                    </x-menuitem>
+                  </x-menu>
+                </x-select>
 
                 <x-buttons>
                   <x-button tabindex="-1">
@@ -192,6 +239,27 @@
                   </x-button>
                 </x-buttons>
               </x-box>
+
+              <x-buttons class="filestats">
+                <x-button size="small" condensed>
+                  <x-label>Export Speed:&nbsp;</x-label>
+                  <x-swatch value="#00ff00"></x-swatch>
+                </x-button>
+                <x-button size="small" condensed>
+                  <x-label>Quality:&nbsp;</x-label>
+                  <x-swatch value="#00ff00"></x-swatch>
+                </x-button>
+                <x-button size="small" condensed>
+                  <x-label>File Size:&nbsp;</x-label>
+                  <x-swatch value="#ff0000"></x-swatch>
+                </x-button>
+                <x-button size="small" condensed>
+                  <x-label>Compatability:&nbsp;</x-label>
+                  <x-swatch value="#00ff00"></x-swatch>
+                </x-button>
+              </x-buttons>
+
+              <hr />
 
               <x-box class="videoprogress">
                 <x-label>0%</x-label>

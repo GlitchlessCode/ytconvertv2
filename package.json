@@ -1,7 +1,7 @@
 {
   "name": "ytconvertv2",
   "productName": "ytconvertv2",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Electron app to convert from youtube",
   "main": "src/index.js",
   "scripts": {
@@ -20,6 +20,9 @@
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
     "electron-store": "^8.1.0",
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0",
+    "fluent-ffmpeg": "^2.1.2",
     "xel": "^0.22.2",
     "xstate": "^4.38.2",
     "ytdl-core": "^4.11.5",

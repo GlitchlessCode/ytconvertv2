@@ -1,5 +1,5 @@
 // APP VERSION
-const VERSION = "v1.2.0";
+const VERSION = "v1.2.1";
 
 // Imports
 const {
@@ -18,6 +18,12 @@ const Store = require("electron-store");
 const { createMachine, interpret, assign } = require("xstate");
 const fs = require("fs");
 const { raise } = require("xstate/lib/actions");
+const ffmpeg = require("fluent-ffmpeg");
+ffmpeg.setFfmpegPath(require("ffmpeg-static"));
+ffmpeg.setFfprobePath(require("ffprobe-static"));
+// const command = ffmpeg(path.join(__dirname, "/Creo - Place On Fire.mp3"))
+//   .audioBitrate(128)
+//   .save("./test.mp3");
 
 const store = new Store({
   clearInvalidConfig: true,
@@ -26,6 +32,16 @@ const store = new Store({
 let currRelease;
 let currStatus;
 let currLocation = store.get("location", undefined);
+let currExportSettings = {
+  video: {
+    type: "audio",
+    ext: "wav",
+  },
+  playlist: {
+    type: "audio",
+    ext: "wav",
+  },
+};
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require("electron-squirrel-startup")) {
@@ -47,7 +63,7 @@ const createWindow = async () => {
     minWidth: 300,
     icon: path.join(__dirname, "/images/ytconvertv2_logo.png"),
     webPreferences: {
-      devTools: false,
+      // devTools: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
@@ -110,6 +126,19 @@ const createWindow = async () => {
       webContents.send("location", currLocation);
     }
   });
+
+  ipcMain.on(
+    "selector-change",
+    /**
+     * @param {"video"|"playlist"} exportType
+     * @param {"audio"|"video"} fileType
+     * @param {"wav"|"mp3"|"mp4"|"mov"} fileExtension
+     */
+    function (event, exportType, fileType, fileExtension) {
+      currExportSettings[exportType].type = fileType;
+      currExportSettings[exportType].ext = fileExtension;
+    }
+  );
 
   StateService.onTransition(() => {
     const snapshot = StateService.getSnapshot();
@@ -306,10 +335,17 @@ function generateInterpretation(obj) {
 }
 
 let videoReference = undefined;
-function extractVideoFromURL(location, url, name, event, videoFinish) {
+function extractVideoFromURL(
+  location,
+  url,
+  name,
+  event,
+  extension,
+  videoFinish
+) {
   let regex = /[\\\/:*?<>|]/gm;
   let cutTitle = name.replace(regex, "_");
-  const outputLocation = `${location}/${cutTitle}.mp3`;
+  const outputLocation = `${location}/${cutTitle}.${extension}`;
   const video = ytdl(url, { filter: "audioonly", quality: "highestaudio" });
   webContents.send(event, 0);
   video.addListener("progress", function (_, current, total) {
@@ -320,11 +356,20 @@ function extractVideoFromURL(location, url, name, event, videoFinish) {
     videoReference = undefined;
     videoFinish();
   });
-  video.pipe(fs.createWriteStream(outputLocation));
+  ffmpeg()
+    .input(video)
+    .outputFormat(extension)
+    .stream(fs.createWriteStream(outputLocation));
 }
 
 let playlistReference = undefined;
-async function extractPlaylistFromURL(location, url, name, playlistFinish) {
+async function extractPlaylistFromURL(
+  location,
+  url,
+  name,
+  extension,
+  playlistFinish
+) {
   let regex = /[\\\/:*?<>|]/gm;
   let cutTitle = name.replace(regex, "_");
   const outputLocation = `${location}/${cutTitle}`;
@@ -355,6 +400,7 @@ async function extractPlaylistFromURL(location, url, name, playlistFinish) {
           video.url,
           video.title,
           "playlist-video-progress",
+          extension,
           resolve
         );
       });
@@ -671,6 +717,7 @@ const StateManager = createMachine(
           context.videoDetails.fetchedUrl,
           context.videoDetails.title,
           "video-progress",
+          currExportSettings.video.ext,
           function () {
             StateService.send("FINISH_VIDEO_EXTRACT");
           }
@@ -687,6 +734,7 @@ const StateManager = createMachine(
           currLocation,
           context.playlistDetails.fetchedUrl,
           context.playlistDetails.title,
+          currExportSettings.playlist.ext,
           function () {
             StateService.send("FINISH_PLAYLIST_EXTRACT");
           }
