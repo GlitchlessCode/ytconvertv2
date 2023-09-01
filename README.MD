@@ -10,13 +10,13 @@ YTConvertV2 is an application written using [ElectronJS](https://www.electronjs.
 
 Convert any available video to to a .mp3 file at your desired location.
 
-![Video Extractor Demo](readmeimgs/ytconvertv2_videofetcher.png)
+![Video Extractor Demo](readmeimgs/ytconvertv2_videofetcherv2.png)
 
 ### Playlist Extractor
 
 Convert an entire playlist worth of videos into .mp3 files at the click of a few buttons!
 
-![Playlist Extractor Demo](readmeimgs/ytconvertv2_playlistfetcher.png)
+![Playlist Extractor Demo](readmeimgs/ytconvertv2_playlistfetcherv2.png)
 
 ### Version Warnings
 
