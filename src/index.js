@@ -21,9 +21,6 @@ const { raise } = require("xstate/lib/actions");
 const ffmpeg = require("fluent-ffmpeg");
 ffmpeg.setFfmpegPath(require("ffmpeg-static"));
 ffmpeg.setFfprobePath(require("ffprobe-static"));
-// const command = ffmpeg(path.join(__dirname, "/Creo - Place On Fire.mp3"))
-//   .audioBitrate(128)
-//   .save("./test.mp3");
 
 const store = new Store({
   clearInvalidConfig: true,
@@ -63,7 +60,7 @@ const createWindow = async () => {
     minWidth: 300,
     icon: path.join(__dirname, "/images/ytconvertv2_logo.png"),
     webPreferences: {
-      // devTools: false,
+      devTools: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
