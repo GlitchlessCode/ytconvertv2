@@ -22,7 +22,7 @@ const ffmpeg = require("fluent-ffmpeg");
 const theoreticalPath = require("ffmpeg-static");
 const fileName = path.join(
   process.resourcesPath,
-  theoreticalPath.match(/\\(?:.(?!\\))+$/)[0]
+  theoreticalPath.match(/[\\\/](?:.(?![\\\/]))+$/)[0]
 );
 if (fs.existsSync(fileName)) {
   ffmpeg.setFfmpegPath(fileName);
