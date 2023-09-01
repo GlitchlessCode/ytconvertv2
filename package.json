@@ -21,7 +21,6 @@
     "electron-squirrel-startup": "^1.0.0",
     "electron-store": "^8.1.0",
     "ffmpeg-static": "^5.2.0",
-    "ffprobe-static": "^3.1.0",
     "fluent-ffmpeg": "^2.1.2",
     "xel": "^0.22.2",
     "xstate": "^4.38.2",

@@ -19,8 +19,16 @@ const { createMachine, interpret, assign } = require("xstate");
 const fs = require("fs");
 const { raise } = require("xstate/lib/actions");
 const ffmpeg = require("fluent-ffmpeg");
-ffmpeg.setFfmpegPath(require("ffmpeg-static"));
-ffmpeg.setFfprobePath(require("ffprobe-static"));
+const theoreticalPath = require("ffmpeg-static");
+const fileName = path.join(
+  process.resourcesPath,
+  theoreticalPath.match(/\\(?:.(?!\\))+$/)[0]
+);
+if (fs.existsSync(fileName)) {
+  ffmpeg.setFfmpegPath(fileName);
+} else {
+  ffmpeg.setFfmpegPath(theoreticalPath);
+}
 
 const store = new Store({
   clearInvalidConfig: true,

@@ -1130,11 +1130,6 @@
     "https-proxy-agent" "^5.0.0"
     "progress" "^2.0.3"
 
-"ffprobe-static@^3.1.0":
-  "integrity" "sha512-Dvpa9uhVMOYivhHKWLGDoa512J751qN1WZAIO+Xw4L/mrUSPxS4DApzSUDbCFE/LUq2+xYnznEahTd63AqBSpA=="
-  "resolved" "https://registry.npmjs.org/ffprobe-static/-/ffprobe-static-3.1.0.tgz"
-  "version" "3.1.0"
-
 "filename-reserved-regex@^2.0.0":
   "integrity" "sha512-lc1bnsSr4L4Bdif8Xb/qrtokGbq5zlsms/CYH8PP+WtCkGNF65DPiQY8vG3SakEdRn8Dlnm+gW/qWKKjS5sZzQ=="
   "resolved" "https://registry.npmjs.org/filename-reserved-regex/-/filename-reserved-regex-2.0.0.tgz"
