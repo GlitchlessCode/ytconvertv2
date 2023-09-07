@@ -24,7 +24,7 @@
     "fluent-ffmpeg": "^2.1.2",
     "xel": "^0.22.2",
     "xstate": "^4.38.2",
-    "ytdl-core": "^4.11.5",
+    "ytdl-core": "github:distubejs/ytdl-core#master",
     "ytpl": "^2.3.0"
   },
   "devDependencies": {
