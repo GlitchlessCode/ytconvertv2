@@ -348,7 +348,7 @@ function extractVideoFromURL(
   extension,
   videoFinish
 ) {
-  let regex = /[\\\/:*?<>|]/gm;
+  let regex = /[\\\/:*?<>|"'`]/gm;
   let cutTitle = name.replace(regex, "_");
   const outputLocation = `${location}/${cutTitle}.${extension}`;
   const video = ytdl(url, { filter: "audioonly", quality: "highestaudio" });
@@ -375,7 +375,7 @@ async function extractPlaylistFromURL(
   extension,
   playlistFinish
 ) {
-  let regex = /[\\\/:*?<>|]/gm;
+  let regex = /[\\\/:*?<>|"'`]/gm;
   let cutTitle = name.replace(regex, "_");
   const outputLocation = `${location}/${cutTitle}`;
   if (!fs.existsSync(outputLocation)) {
