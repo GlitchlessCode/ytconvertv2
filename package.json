@@ -1,7 +1,7 @@
 {
   "name": "ytconvertv2",
   "productName": "ytconvertv2",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Electron app to convert from youtube",
   "main": "src/index.js",
   "scripts": {

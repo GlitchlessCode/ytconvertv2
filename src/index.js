@@ -1,5 +1,5 @@
 // APP VERSION
-const VERSION = "v1.2.2";
+const VERSION = "v1.2.3";
 
 // Imports
 const {
@@ -361,10 +361,7 @@ function extractVideoFromURL(
     videoReference = undefined;
     videoFinish();
   });
-  ffmpeg()
-    .input(video)
-    .outputFormat(extension)
-    .stream(fs.createWriteStream(outputLocation));
+  ffmpeg().input(video).outputFormat(extension).save(outputLocation);
 }
 
 let playlistReference = undefined;
