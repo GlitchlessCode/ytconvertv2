@@ -1,16 +1,8 @@
 // APP VERSION
-const VERSION = "v1.2.3";
+const VERSION = "v1.2.4";
 
 // Imports
-const {
-  app,
-  BrowserWindow,
-  ipcMain,
-  screen,
-  dialog,
-  net,
-  shell,
-} = require("electron");
+const { app, BrowserWindow, ipcMain, screen, dialog, net, shell } = require("electron");
 const path = require("path");
 const ytdl = require("ytdl-core");
 const ytpl = require("ytpl");
@@ -77,9 +69,7 @@ const createWindow = async () => {
 
   webContents = mainWindow.webContents;
 
-  mainWindow.setBackgroundColor(
-    store.get("darkMode", true) ? "#242424" : "#f5f5f5"
-  );
+  mainWindow.setBackgroundColor(store.get("darkMode", true) ? "#242424" : "#f5f5f5");
 
   // and load the index.html of the app.
   await mainWindow.loadFile(path.join(__dirname, "index.html"));
@@ -231,9 +221,7 @@ async function fetchVideoInfo(ytUrl) {
 
     const totalSeconds = parseInt(info.lengthSeconds);
     const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-    const minutes = (Math.floor(totalSeconds / 60) % 60)
-      .toString()
-      .padStart(2, "0");
+    const minutes = (Math.floor(totalSeconds / 60) % 60).toString().padStart(2, "0");
     const hours = Math.floor(totalSeconds / 3600)
       .toString()
       .padStart(2, "0");
@@ -340,14 +328,7 @@ function generateInterpretation(obj) {
 }
 
 let videoReference = undefined;
-function extractVideoFromURL(
-  location,
-  url,
-  name,
-  event,
-  extension,
-  videoFinish
-) {
+function extractVideoFromURL(location, url, name, event, extension, videoFinish) {
   let regex = /[\\\/:*?<>|"'`]/gm;
   let cutTitle = name.replace(regex, "_");
   const outputLocation = `${location}/${cutTitle}.${extension}`;
@@ -365,13 +346,7 @@ function extractVideoFromURL(
 }
 
 let playlistReference = undefined;
-async function extractPlaylistFromURL(
-  location,
-  url,
-  name,
-  extension,
-  playlistFinish
-) {
+async function extractPlaylistFromURL(location, url, name, extension, playlistFinish) {
   let regex = /[\\\/:*?<>|"'`]/gm;
   let cutTitle = name.replace(regex, "_");
   const outputLocation = `${location}/${cutTitle}`;
