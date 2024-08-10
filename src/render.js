@@ -58,9 +58,7 @@ const singleVideoProgressBar = document.querySelector(
 const singleVideoProgressText = document.querySelector(
   "#CARDsingle .videoprogress x-label"
 );
-const singleVideoFetchBtn = document.querySelector(
-  '#CARDsingle x-button[value="fetch"]'
-);
+const singleVideoFetchBtn = document.querySelector('#CARDsingle x-button[value="fetch"]');
 const singleVideoExtractBtn = document.querySelector(
   '#CARDsingle x-button[value="export"]'
 );
@@ -96,16 +94,12 @@ const multiVideoBottomProgressBar = document.querySelector(
 const multiVideoBottomProgressText = document.querySelector(
   "#CARDmulti .playlistprogress x-label"
 );
-const multiVideoFetchBtn = document.querySelector(
-  '#CARDmulti x-button[value="fetch"]'
-);
+const multiVideoFetchBtn = document.querySelector('#CARDmulti x-button[value="fetch"]');
 const multiVideoExtractBtn = document.querySelector(
   '#CARDmulti x-button[value="export"]'
 );
 
-const multiVideoCancelBtn = document.querySelector(
-  '#CARDmulti x-button[value="cancel"]'
-);
+const multiVideoCancelBtn = document.querySelector('#CARDmulti x-button[value="cancel"]');
 registerToolbar(
   "PLAYLIST",
   multiVideoFetchBtn,
@@ -205,7 +199,9 @@ api.recieveConnection(function (event, online) {
 api.recieveState(interpretState);
 
 api.recieveLocation(function (event, location) {
+  locationOut.removeAttribute("readonly");
   locationOut.value = location;
+  locationOut.setAttribute("readonly", "");
 });
 
 api.recieveVideoProgress(function (event, value) {
@@ -231,35 +227,17 @@ bugBtn.addEventListener("click", api.requestOpenIssues);
 closeButton.addEventListener("click", api.requestWindowClose);
 singleVideoFileType.addEventListener(
   "toggle",
-  setupSelectBox.bind(
-    singleVideoFileType,
-    singleVideoFileSelect,
-    singleVideoFileStats
-  )
+  setupSelectBox.bind(singleVideoFileType, singleVideoFileSelect, singleVideoFileStats)
 );
 multiVideoFileType.addEventListener(
   "toggle",
-  setupSelectBox.bind(
-    multiVideoFileType,
-    multiVideoFileSelect,
-    multiVideoFileStats
-  )
+  setupSelectBox.bind(multiVideoFileType, multiVideoFileSelect, multiVideoFileStats)
 );
 singleVideoFileSelect.addEventListener("change", (event) => {
-  selectorChange(
-    event,
-    "video",
-    singleVideoFileType.value,
-    singleVideoFileStats
-  );
+  selectorChange(event, "video", singleVideoFileType.value, singleVideoFileStats);
 });
 multiVideoFileSelect.addEventListener("change", (event) => {
-  selectorChange(
-    event,
-    "playlist",
-    multiVideoFileType.value,
-    multiVideoFileStats
-  );
+  selectorChange(event, "playlist", multiVideoFileType.value, multiVideoFileStats);
 });
 
 // Anonymous Event Listeners
@@ -311,9 +289,7 @@ function testBuffers(buf1, buf2) {
 }
 
 function setColorMode(mode) {
-  themeMeta.content = `../node_modules/xel/themes/adwaita${
-    mode ? "-dark" : ""
-  }.css`;
+  themeMeta.content = `../node_modules/xel/themes/adwaita${mode ? "-dark" : ""}.css`;
   lightThemeBtn.toggled = !mode;
   darkThemeBtn.toggled = mode;
   api.sendDarkMode(mode);
@@ -467,14 +443,7 @@ function createInfoCard(info) {
  * @param {HTMLElement} autofetch
  * @param {HTMLElement} input
  */
-function registerToolbar(
-  type,
-  fetchBtn,
-  exportBtn,
-  cancelBtn,
-  autofetch,
-  input
-) {
+function registerToolbar(type, fetchBtn, exportBtn, cancelBtn, autofetch, input) {
   fetchBtn.addEventListener("click", function () {
     fetch(type, input.value);
   });

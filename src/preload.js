@@ -47,21 +47,13 @@ contextBridge.exposeInMainWorld("api", {
     if (fileType === "audio") {
       if (
         typeof fileExtension !== "string" ||
-        !(
-          fileExtension === "wav" ||
-          fileExtension === "mp3" ||
-          fileExtension === "ogg"
-        )
+        !(fileExtension === "wav" || fileExtension === "mp3" || fileExtension === "ogg")
       )
         throw new TypeError("Cannot invoke function with invalid parameters");
     } else {
       if (
         typeof fileExtension !== "string" ||
-        !(
-          fileExtension === "mp4" ||
-          fileExtension === "mov" ||
-          fileExtension === "mkv"
-        )
+        !(fileExtension === "mp4" || fileExtension === "mov" || fileExtension === "mkv")
       )
         throw new TypeError("Cannot invoke function with invalid parameters");
     }
@@ -79,14 +71,10 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.on("current-version", (event, ...args) => func(event, ...args));
   },
   recieveReleaseNotice: function (func) {
-    ipcRenderer.on("version-outdated", (event, ...args) =>
-      func(event, ...args)
-    );
+    ipcRenderer.on("version-outdated", (event, ...args) => func(event, ...args));
   },
   recieveState: function (func) {
-    ipcRenderer.on("xstate-transitioned", (event, ...args) =>
-      func(event, ...args)
-    );
+    ipcRenderer.on("xstate-transitioned", (event, ...args) => func(event, ...args));
   },
   recieveConnection: function (func) {
     ipcRenderer.on("connection-status", (event, ...args) => {
