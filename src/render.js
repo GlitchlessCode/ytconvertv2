@@ -1,9 +1,8 @@
 import Xel from "../node_modules/xel/xel.js";
+import "./components/registry.js";
 
 // * Initialization
 // MenuBar
-const themeMeta = document.querySelector('meta[name="xel-theme"]');
-
 const currVersionEl = document.querySelector("#currVersion");
 
 const thumnailsToggle = document.querySelector("#thumbnails");
@@ -109,6 +108,10 @@ registerToolbar(
   multiVideoInput
 );
 const multiVideoFileStats = document.querySelector("#CARDmulti .filestats");
+
+const multiVideoListAccordion = document.querySelector("#CONTENTmulti > x-accordion");
+/** @type {import('./components/components/y-video-list.js').default} */
+const multiVideoList = document.querySelector("#CONTENTmulti y-video-list");
 
 // Version Notification
 /** @type {HTMLDialogElement} */
@@ -239,6 +242,7 @@ singleVideoFileSelect.addEventListener("change", (event) => {
 multiVideoFileSelect.addEventListener("change", (event) => {
   selectorChange(event, "playlist", multiVideoFileType.value, multiVideoFileStats);
 });
+multiVideoList.addEventListener("toggle-include", setVideoInclusion);
 
 // Anonymous Event Listeners
 thumnailsToggle.addEventListener("toggle", function () {
@@ -289,7 +293,7 @@ function testBuffers(buf1, buf2) {
 }
 
 function setColorMode(mode) {
-  themeMeta.content = `../node_modules/xel/themes/adwaita${mode ? "-dark" : ""}.css`;
+  Xel.theme = `../node_modules/xel/themes/adwaita${mode ? "-dark" : ""}.css`;
   lightThemeBtn.toggled = !mode;
   darkThemeBtn.toggled = mode;
   api.sendDarkMode(mode);
@@ -378,11 +382,17 @@ async function interpretState(event, newState, context) {
     playlistDetailHash = playlistDigest;
     const main = multiVideoInfo.querySelector("main");
     main.innerHTML = "";
-    if (context.playlistDetails !== undefined) {
-      main.appendChild(createInfoCard(context.playlistDetails));
+    const { playlistDetails } = context;
+
+    if (playlistDetails !== undefined) {
+      main.appendChild(createInfoCard(playlistDetails));
+      multiVideoList.initVideos(playlistDetails.items.length, playlistDetails.items);
+      multiVideoListAccordion.expand();
       multiVideoInfo.expand();
     } else {
       multiVideoInfo.collapse();
+      multiVideoListAccordion.collapse();
+      multiVideoList.initVideos(0, []);
     }
   }
 }
@@ -508,6 +518,13 @@ function setupSelectBox(selector, filestatsEl) {
   selector.innerHTML = html;
   */
   this.value = "audio";
+}
+
+/**
+ * @param {{detail: {include: boolean, index: number}}}
+ */
+function setVideoInclusion({ detail }) {
+  api.sendVideoInclusion(detail.index, detail.include);
 }
 
 function selectorChange(event, exportType, fileType, filestatsEl) {

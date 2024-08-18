@@ -60,7 +60,7 @@ const createWindow = async () => {
     minWidth: 300,
     icon: path.join(__dirname, "/images/ytconvertv2_logo.png"),
     webPreferences: {
-      devTools: false,
+      devTools: true,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
@@ -82,6 +82,18 @@ const createWindow = async () => {
   ipcMain.on("xel-dark-mode", function (event, data) {
     store.set("darkMode", data);
   });
+
+  ipcMain.on(
+    "video-inclusion",
+    /**
+     * @param {number} index
+     * @param {boolean} inclusion
+     */
+    function (event, index, inclusion) {
+      StateService.send("VIDEO_INCLUSION_CHANGE", { data: { index, inclusion } });
+    }
+  );
+
   ipcMain.on("open-release-request", function () {
     const regex =
       /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)/;
@@ -248,6 +260,18 @@ async function fetchVideoInfo(ytUrl) {
 }
 
 async function fetchPlaylistInfo(ytUrl) {
+  /**
+   * @type {{
+   * fetchedUrl: string|undefined,
+   * thumb: string,
+   * title: string,
+   * author: { avatar: string, name: string} | undefined,
+   * adjustedValue: number | undefined,
+   * adjustedValueTitle: "Videos",
+   * items: {title: string, index: number, author: {name: string}, thumb: string, duration: string}[] | undefined,
+   * included: Set<number>
+   * }}
+   */
   const result = {
     fetchedUrl: undefined,
     thumb: undefined,
@@ -256,6 +280,8 @@ async function fetchPlaylistInfo(ytUrl) {
     adjustedValue: undefined,
     adjustedValueTitle: "Videos",
     date: undefined,
+    items: [],
+    included: new Set(),
   };
   const wrapper = {};
   try {
@@ -269,6 +295,16 @@ async function fetchPlaylistInfo(ytUrl) {
       name: info.author.name,
     };
     result.adjustedValue = info.items.length;
+    result.items = info.items.map(
+      ({ title, index, author: { name }, bestThumbnail: { url }, duration }) => ({
+        title,
+        index: index - 1,
+        author: { name },
+        thumb: url,
+        duration,
+      })
+    );
+    info.items.forEach((item) => result.included.add(item.index - 1));
     result.date = info.lastUpdated;
     wrapper.valid = true;
   } catch (error) {
@@ -346,7 +382,21 @@ function extractVideoFromURL(location, url, name, event, extension, videoFinish)
 }
 
 let playlistReference = undefined;
-async function extractPlaylistFromURL(location, url, name, extension, playlistFinish) {
+/**
+ * @param {string} location
+ * @param {string} url
+ * @param {string} name
+ * @param {string} extension
+ * @param {Set<number>} inclusionSet
+ */
+async function extractPlaylistFromURL(
+  location,
+  url,
+  name,
+  extension,
+  inclusionSet,
+  playlistFinish
+) {
   let regex = /[\\\/:*?<>|"'`]/gm;
   let cutTitle = name.replace(regex, "_");
   const outputLocation = `${location}/${cutTitle}`;
@@ -354,14 +404,16 @@ async function extractPlaylistFromURL(location, url, name, extension, playlistFi
     fs.mkdirSync(outputLocation);
   }
   webContents.send("playlist-progress", 0);
-  const playlist = (await ytpl(url)).items;
+  const playlist = (await ytpl(url)).items.filter((item) =>
+    inclusionSet.has(item.index - 1)
+  );
   async function runList(depth) {
     const video = playlist[depth];
     try {
       await new Promise((resolve, reject) => {
         webContents.send(
           "playlist-progress",
-          Math.floor((depth / playlist.length) * 100)
+          Math.floor((depth / inclusionSet.size) * 100)
         );
         playlistReference = {
           destroy: () => {
@@ -625,6 +677,22 @@ const StateManager = createMachine(
                       raise("ENTER_LOCATION"),
                     ],
                   },
+                  VIDEO_INCLUSION_CHANGE: {
+                    internal: true,
+                    actions: assign({
+                      playlistDetails: (context, event) => {
+                        const set = context.playlistDetails.included;
+
+                        if (event.data.inclusion) {
+                          set.add(event.data.index);
+                        } else {
+                          set.delete(event.data.index);
+                        }
+
+                        return context.playlistDetails;
+                      },
+                    }),
+                  },
                   START_PLAYLIST_EXTRACT: [
                     {
                       target: [
@@ -632,7 +700,7 @@ const StateManager = createMachine(
                         "#StateManager.LocationSelector.disabled",
                         "#StateManager.SingleVideoFetcher.disabled",
                       ],
-                      cond: "validLocation",
+                      cond: "validPlaylistExtractSettings",
                       actions: "startPlaylistExtract",
                     },
                     {
@@ -686,6 +754,9 @@ const StateManager = createMachine(
       validLocation: function () {
         return fs.existsSync(currLocation);
       },
+      validPlaylistExtractSettings: function (context) {
+        return fs.existsSync(currLocation) && context.playlistDetails.included.size > 0;
+      },
     },
     actions: {
       startVideoExtract: function (context) {
@@ -712,6 +783,7 @@ const StateManager = createMachine(
           context.playlistDetails.fetchedUrl,
           context.playlistDetails.title,
           currExportSettings.playlist.ext,
+          context.playlistDetails.included,
           function () {
             StateService.send("FINISH_PLAYLIST_EXTRACT");
           }

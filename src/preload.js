@@ -64,6 +64,13 @@ contextBridge.exposeInMainWorld("api", {
       `${fileExtension}`
     );
   },
+  sendVideoInclusion: function (index, inclusion) {
+    if (!Number.isInteger(index) || index < 0)
+      throw new TypeError("Cannot invoke function with invalid parameters");
+    if (typeof inclusion !== "boolean")
+      throw new TypeError("Cannot invoke function with invalid parameters");
+    ipcRenderer.send("video-inclusion", index, inclusion);
+  },
   recieveDarkMode: function (func) {
     ipcRenderer.on("xel-dark-mode", (event, ...args) => func(event, ...args));
   },
