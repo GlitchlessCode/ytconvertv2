@@ -2,21 +2,25 @@
 
 ## About
 
-YTConvertV2 is an application written using [ElectronJS](https://www.electronjs.org), to extract audio (and soon video) from youtube videos, and convert them to files on your computer.
+YTConvertV2 is an application written using [ElectronJS](https://www.electronjs.org), to extract audio and video from youtube videos, and convert them to files on your computer.
 
 ## Features
 
 ### Video Extractor
 
-Convert any available video to an audio file at your desired location.
+Convert any available video to an audio or video file at your desired location.
 
 ![Video Extractor Demo](readmeimgs/ytconvertv2_videofetcherv2.png)
 
 ### Playlist Extractor
 
-Convert an entire playlist worth of videos into multiple audio files at the click of a few buttons!
+Convert an entire playlist worth of videos into multiple audio or video files at the click of a few buttons!
 
 ![Playlist Extractor Demo](readmeimgs/ytconvertv2_playlistfetcherv2.png)
+
+Use the playlist video preview to see every video in the playlist, before you export. You can even select videos to exclude from the export!
+
+![Playlist Preview Demo](readmeimgs/ytconvertv2_playlistpreview.png)
 
 ### Version Warnings
 
@@ -38,7 +42,6 @@ _Dev Note: Your computer may warn you that it was downloaded from the internet, 
 
 I'm planning to add more features to YTConvertV2 soon, here are some of the upcoming features:
 
-- Option to convert to .mp4
 - Option to change video(s)/playlist title before extract
 - Extract a list of videos from a .txt file
 

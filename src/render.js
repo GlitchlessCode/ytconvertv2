@@ -141,6 +141,24 @@ const fileStats = {
     size: "#c3ff00",
     comp: "#00ff00",
   },
+  mp4: {
+    speed: "#ffcc00",
+    qual: "#00ff00",
+    size: "#ffff00",
+    comp: "#00ff00",
+  },
+  mov: {
+    speed: "#ffff00",
+    qual: "#00ff00",
+    size: "#ffff00",
+    comp: "#ffff00",
+  },
+  mkv: {
+    speed: "#00ff00",
+    qual: "#00ff00",
+    size: "#00ff00",
+    comp: "#ff9900",
+  },
 };
 
 // Variables
@@ -209,17 +227,17 @@ api.recieveLocation(function (event, location) {
 
 api.recieveVideoProgress(function (event, value) {
   singleVideoProgressBar.value = value;
-  singleVideoProgressText.innerHTML = value + "%";
+  singleVideoProgressText.innerHTML = Math.round(value) + "%";
 });
 
 api.recievePlaylistVideoProgress(function (event, value) {
   multiVideoTopProgressBar.value = value;
-  multiVideoTopProgressText.innerHTML = value + "%";
+  multiVideoTopProgressText.innerHTML = Math.round(value) + "%";
 });
 
 api.recievePlaylistProgress(function (event, value) {
   multiVideoBottomProgressBar.value = value;
-  multiVideoBottomProgressText.innerHTML = value + "%";
+  multiVideoBottomProgressText.innerHTML = Math.round(value) + "%";
 });
 
 // Event Listeners
@@ -230,11 +248,21 @@ bugBtn.addEventListener("click", api.requestOpenIssues);
 closeButton.addEventListener("click", api.requestWindowClose);
 singleVideoFileType.addEventListener(
   "toggle",
-  setupSelectBox.bind(singleVideoFileType, singleVideoFileSelect, singleVideoFileStats)
+  setupSelectBox.bind(
+    singleVideoFileType,
+    "video",
+    singleVideoFileSelect,
+    singleVideoFileStats
+  )
 );
 multiVideoFileType.addEventListener(
   "toggle",
-  setupSelectBox.bind(multiVideoFileType, multiVideoFileSelect, multiVideoFileStats)
+  setupSelectBox.bind(
+    multiVideoFileType,
+    "playlist",
+    multiVideoFileSelect,
+    multiVideoFileStats
+  )
 );
 singleVideoFileSelect.addEventListener("change", (event) => {
   selectorChange(event, "video", singleVideoFileType.value, singleVideoFileStats);
@@ -481,13 +509,11 @@ function registerToolbar(type, fetchBtn, exportBtn, cancelBtn, autofetch, input)
 }
 
 /**
- *
+ * @param {string} exportType
  * @param {HTMLElement} selector
  * @param {HTMLElement} filestatsEl
  */
-function setupSelectBox(selector, filestatsEl) {
-  /*
-  ! For the future
+function setupSelectBox(exportType, selector, filestatsEl) {
   const items = selector.querySelectorAll("x-menuitem");
   const labels = selector.querySelectorAll("x-label");
   if (this.value === "video") {
@@ -498,26 +524,29 @@ function setupSelectBox(selector, filestatsEl) {
     labels[1].innerHTML = ".mov";
     labels[2].innerHTML = ".mkv";
     selector.value = "mp4";
+
+    const colours = filestatsEl.querySelectorAll("x-swatch");
+    colours[0].value = fileStats[selector.value].speed;
+    colours[1].value = fileStats[selector.value].qual;
+    colours[2].value = fileStats[selector.value].size;
+    colours[3].value = fileStats[selector.value].comp;
   } else {
-    
-  items[0].setAttribute("value", "wav");
-  items[1].setAttribute("value", "ogg");
-  items[2].setAttribute("value", "mp3");
-  labels[0].innerHTML = ".wav";
-  labels[1].innerHTML = ".ogg";
-  labels[2].innerHTML = ".mp3";
-  selector.value = "wav";
-  */
-  const colours = filestatsEl.querySelectorAll("x-swatch");
-  colours[0].value = fileStats[selector.value].speed;
-  colours[1].value = fileStats[selector.value].qual;
-  colours[2].value = fileStats[selector.value].size;
-  colours[3].value = fileStats[selector.value].comp;
-  /*
+    items[0].setAttribute("value", "wav");
+    items[1].setAttribute("value", "ogg");
+    items[2].setAttribute("value", "mp3");
+    labels[0].innerHTML = ".wav";
+    labels[1].innerHTML = ".ogg";
+    labels[2].innerHTML = ".mp3";
+    selector.value = "wav";
+
+    const colours = filestatsEl.querySelectorAll("x-swatch");
+    colours[0].value = fileStats[selector.value].speed;
+    colours[1].value = fileStats[selector.value].qual;
+    colours[2].value = fileStats[selector.value].size;
+    colours[3].value = fileStats[selector.value].comp;
   }
-  selector.innerHTML = html;
-  */
-  this.value = "audio";
+
+  api.sendSelectorState(exportType, this.value, selector.value);
 }
 
 /**

@@ -39,10 +39,7 @@ contextBridge.exposeInMainWorld("api", {
       !(exportType === "video" || exportType === "playlist")
     )
       throw new TypeError("Cannot invoke function with invalid parameters");
-    if (
-      typeof fileType !== "string" ||
-      !((fileType === "audio") /*|| fileType === "video"*/)
-    )
+    if (typeof fileType !== "string" || !(fileType === "audio" || fileType === "video"))
       throw new TypeError("Cannot invoke function with invalid parameters");
     if (fileType === "audio") {
       if (

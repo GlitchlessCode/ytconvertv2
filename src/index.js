@@ -1,5 +1,5 @@
 // APP VERSION
-const VERSION = "v1.2.4";
+const VERSION = "v1.3.0";
 
 // Imports
 const { app, BrowserWindow, ipcMain, screen, dialog, net, shell } = require("electron");
@@ -11,16 +11,26 @@ const { createMachine, interpret, assign } = require("xstate");
 const fs = require("fs");
 const { raise } = require("xstate/lib/actions");
 const ffmpeg = require("fluent-ffmpeg");
+/** @type {string} */
 const theoreticalPath = require("ffmpeg-static");
+const Deferred = require("./internal-modules/deferred");
+const child_process = require("child_process");
+const { PassThrough } = require("stream");
 const fileName = path.join(
   process.resourcesPath,
   theoreticalPath.match(/[\\\/](?:.(?![\\\/]))+$/)[0]
 );
-if (fs.existsSync(fileName)) {
-  ffmpeg.setFfmpegPath(fileName);
-} else {
-  ffmpeg.setFfmpegPath(theoreticalPath);
-}
+const trueFFmpegPath = path.resolve(
+  (() => {
+    if (fs.existsSync(fileName)) {
+      return fileName;
+    } else {
+      return theoreticalPath;
+    }
+  })()
+);
+
+ffmpeg.setFfmpegPath(trueFFmpegPath);
 
 const store = new Store({
   clearInvalidConfig: true,
@@ -60,7 +70,7 @@ const createWindow = async () => {
     minWidth: 300,
     icon: path.join(__dirname, "/images/ytconvertv2_logo.png"),
     webPreferences: {
-      devTools: true,
+      devTools: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
@@ -76,7 +86,13 @@ const createWindow = async () => {
 
   webContents.send("xel-dark-mode", store.get("darkMode", true));
 
-  ipcMain.on("window-close-request", function () {
+  ipcMain.on("window-close-request", async function () {
+    if (playlistReference !== undefined) {
+      await playlistReference.destroy();
+    }
+    if (videoReference !== undefined) {
+      await videoReference.destroy();
+    }
     mainWindow.close();
   });
   ipcMain.on("xel-dark-mode", function (event, data) {
@@ -139,7 +155,7 @@ const createWindow = async () => {
     /**
      * @param {"video"|"playlist"} exportType
      * @param {"audio"|"video"} fileType
-     * @param {"wav"|"mp3"|"mp4"|"mov"} fileExtension
+     * @param {"wav"|"mp3"|"ogg"|"mp4"|"mov"|"mkv"} fileExtension
      */
     function (event, exportType, fileType, fileExtension) {
       currExportSettings[exportType].type = fileType;
@@ -364,21 +380,309 @@ function generateInterpretation(obj) {
 }
 
 let videoReference = undefined;
-function extractVideoFromURL(location, url, name, event, extension, videoFinish) {
+/**
+ * @param {string} location
+ * @param {string} url
+ * @param {string} name
+ * @param {"video-progress"|"playlist-video-progress"} event
+ * @param {string} extension
+ * @param {"audio"|"video"} extractType
+ */
+function extractYTVideoFromURL(
+  location,
+  url,
+  name,
+  event,
+  extension,
+  extractType,
+  videoFinish
+) {
+  if (extractType == "audio") {
+    let regex = /[\\\/:*?<>|"'`]/gm;
+    let cutTitle = name.replace(regex, "_");
+    const outputLocation = `${location}/${cutTitle}.${extension}`;
+    const video = ytdl(url, { filter: "audioonly", quality: "highestaudio" });
+    webContents.send(event, 0);
+    video.addListener("progress", function (_, current, total) {
+      webContents.send(event, (current / total) * 100);
+    });
+
+    const command = ffmpeg().input(video).outputFormat(extension).save(outputLocation);
+
+    videoReference = {
+      destroy: async () => {
+        video.destroy();
+
+        const killDeferred = new Deferred();
+        command.on("error", () => {
+          killDeferred.resolve();
+        });
+        command.kill();
+        await killDeferred.promise;
+      },
+    };
+    video.addListener("end", function () {
+      videoReference = undefined;
+      videoFinish();
+    });
+  } else {
+    extractVideo(location, url, name, event, extension, videoFinish);
+  }
+}
+
+/**
+ * @param {string} location
+ * @param {string} url
+ * @param {string} name
+ * @param {"video-progress"|"playlist-video-progress"} event
+ * @param {string} extension
+ * @param {"audio"|"video"} extractType
+ */
+async function extractVideo(location, url, name, event, extension, videoFinish) {
+  webContents.send(event, 0);
+
+  /** @typedef {"init"|"video"|"audio"|"merge"|"recode"|"destroyed"} TestState */
+  /** @type {{state: TestState,context:{[x:string]:any},update(newState: TestState, context: {[x:string]:any}), destroyed: readonly boolean}} */
+  let state = {
+    state: "init",
+    context: {},
+    update(newState, context) {
+      this.state = newState;
+      Object.assign(this.context, context);
+    },
+    get destroyed() {
+      return this.state == "destroyed";
+    },
+  };
+
+  let progressBar = new Proxy(
+    {
+      vidStrm: 0,
+      audStrm: 0,
+      recComm: 0,
+    },
+    {
+      set(obj, prop, value) {
+        const bool = Reflect.set(obj, prop, Math.max(0, Math.min(value, 1)));
+        webContents.send(
+          event,
+          (Object.values(obj).reduce((prev, curr) => prev + curr, 0) / 3) * 100
+        );
+        return bool;
+      },
+    }
+  );
+
+  videoReference = {
+    destroy: async () => {
+      let killMerge = false;
+      switch (state.state) {
+        case "recode":
+          const killDeferred = new Deferred();
+          const command = state.context.recodeProcess;
+          command.on("error", () => {
+            killDeferred.resolve();
+          });
+          command.kill();
+          await killDeferred.promise;
+        case "merge":
+          killMerge = true;
+        case "audio":
+          state.context.audioBuffer.destroy();
+          state.context.audioStream.destroy();
+        case "video":
+          state.context.videoBuffer.destroy();
+          state.context.videoStream.destroy();
+        case "merge":
+          if (killMerge) {
+            const killDeferred = new Deferred();
+            state.context.mergeProcess
+              .on("close", () => {
+                killDeferred.resolve();
+              })
+              .kill();
+            await killDeferred.promise;
+          }
+          break;
+      }
+
+      cleanup();
+
+      state.update("destroyed", {});
+    },
+  };
+
+  /** @type {Deferred<{itag:number}[],{itag:number}[]>} */
+  const fetchDeferred = new Deferred();
+
+  let totalTime = -1;
+  ytdl.getInfo(url, { filter: "videoonly" }).then((info) => {
+    const { formats, videoDetails } = info;
+    fetchDeferred.resolve(formats);
+    totalTime = parseInt(videoDetails.lengthSeconds) * 1000;
+  });
+
+  const permittedFormats = [
+    335, 303, 248, 334, 302, 247, 333, 246, 245, 244, 332, 243, 331, 242, 330, 219,
+  ];
+  const formats = new Set((await fetchDeferred.promise).map((v) => v.itag));
+
+  const format = permittedFormats.find((f) => formats.has(f));
+
+  if (!Number.isInteger(format)) throw new Error("No valid formats found");
+
+  if (state.destroyed) return;
+
+  /** @type {Deferred<void, void>} */
+  const videoDeferred = new Deferred();
+  const videoBuffer = new PassThrough({ highWaterMark: 1024 * 1024 * 512 });
+
+  /** @type {import("stream").Readable} */
+  const videoStream = ytdl(url, { quality: format })
+    .on("progress", function (_, current, total) {
+      progressBar["vidStrm"] = current / total;
+    })
+    .on("end", function () {
+      videoDeferred.resolve();
+    })
+    .pipe(videoBuffer);
+  state.update("video", { videoStream, videoBuffer });
+
+  if (state.destroyed) return;
+
+  const audioDeferred = new Deferred();
+  const audioBuffer = new PassThrough({ highWaterMark: 1024 * 1024 * 512 });
+
+  /** @type {import("stream").Readable} */
+  const audioStream = ytdl(url, { filter: "audioonly", quality: "highestaudio" })
+    .on("progress", function (_, current, total) {
+      progressBar["audStrm"] = current / total;
+    })
+    .on("end", function () {
+      audioDeferred.resolve();
+    })
+    .pipe(audioBuffer);
+  state.update("audio", { audioStream, audioBuffer });
+
+  const outputFormat = (() => {
+    switch (extension) {
+      case "mp4":
+        return "mp4";
+      case "mov":
+        return "mov";
+      case "mkv":
+        return "matroska";
+      default:
+        throw new Error("Unknown extension");
+    }
+  })();
+
+  const mergeDeferred = new Deferred();
+  const mergeProcess = child_process
+    .spawn(
+      trueFFmpegPath,
+      [
+        // supress stderr
+        "-loglevel",
+        "8",
+        "-hide_banner",
+
+        // create pipes
+        "-i",
+        "pipe:3",
+        "-i",
+        "pipe:4",
+        // set movflags if mp4
+        ...(extension !== "mkv" ? ["-movflags", "frag_keyframe"] : []),
+
+        // map audio and video
+        "-map",
+        "0:a",
+        "-map",
+        "1:v",
+        // set codecs
+        "-vcodec",
+        "libx264",
+        "-acodec",
+        "aac",
+
+        // output
+        "-f",
+        outputFormat,
+        "pipe:5",
+      ],
+      {
+        windowsHide: true,
+        stdio: [
+          "inherit",
+          "inherit",
+          "inherit",
+          // pipe audio, video, and output
+          "pipe",
+          "pipe",
+          "pipe",
+        ],
+      }
+    )
+    .on("close", () => {
+      mergeDeferred.resolve();
+    });
+
+  state.update("merge", { mergeProcess });
+
+  audioBuffer.pipe(mergeProcess.stdio[3]);
+  videoBuffer.pipe(mergeProcess.stdio[4]);
+
   let regex = /[\\\/:*?<>|"'`]/gm;
   let cutTitle = name.replace(regex, "_");
   const outputLocation = `${location}/${cutTitle}.${extension}`;
-  const video = ytdl(url, { filter: "audioonly", quality: "highestaudio" });
-  webContents.send(event, 0);
-  video.addListener("progress", function (_, current, total) {
-    webContents.send(event, Math.floor((current / total) * 100));
-  });
-  videoReference = video;
-  video.addListener("end", function () {
+
+  const recodeDeferred = new Deferred();
+  const recodeProcess = ffmpeg()
+    .addInput(mergeProcess.stdio[5])
+    .videoCodec("copy")
+    .audioCodec("copy")
+    .save(outputLocation)
+    .on("end", () => recodeDeferred.resolve())
+    .on("progress", (event) => {
+      try {
+        progressBar["recComm"] = convertTimestampToMillis(event?.timemark) / totalTime;
+      } catch (error) {}
+    });
+
+  state.update("recode", { recodeProcess });
+
+  await videoDeferred.promise;
+  progressBar["vidStrm"] = 1;
+  await audioDeferred.promise;
+  progressBar["audStrm"] = 1;
+  await recodeDeferred.promise;
+  progressBar["recComm"] = 1;
+
+  cleanup();
+
+  function cleanup() {
     videoReference = undefined;
     videoFinish();
-  });
-  ffmpeg().input(video).outputFormat(extension).save(outputLocation);
+  }
+}
+
+/**
+ * @param {string} timeString
+ */
+function convertTimestampToMillis(timeString) {
+  const regex =
+    /^(?<hour>[0-9]+):(?<minute>[0-9]{2}):(?<second>[0-9]{2})\.(?<milli>[0-9]+)$/;
+
+  const match = regex.exec(timeString);
+  if (match == null) throw new Error("Regex failed to match against " + timeString);
+
+  const hour = parseInt(match.groups.hour);
+  const minute = parseInt(match.groups.minute);
+  const second = parseInt(match.groups.second);
+  const milli = parseInt(match.groups.milli.padEnd(3, 0).slice(0, 3));
+
+  return ((hour * 60 + minute) * 60 + second) * 1000 + milli;
 }
 
 let playlistReference = undefined;
@@ -387,6 +691,7 @@ let playlistReference = undefined;
  * @param {string} url
  * @param {string} name
  * @param {string} extension
+ * @param {"audio"|"video"} extractType
  * @param {Set<number>} inclusionSet
  */
 async function extractPlaylistFromURL(
@@ -394,9 +699,16 @@ async function extractPlaylistFromURL(
   url,
   name,
   extension,
+  extractType,
   inclusionSet,
   playlistFinish
 ) {
+  let run = true;
+  playlistReference = {
+    destroy: async () => {
+      run = false;
+    },
+  };
   let regex = /[\\\/:*?<>|"'`]/gm;
   let cutTitle = name.replace(regex, "_");
   const outputLocation = `${location}/${cutTitle}`;
@@ -411,25 +723,33 @@ async function extractPlaylistFromURL(
     const video = playlist[depth];
     try {
       await new Promise((resolve, reject) => {
+        if (!run) {
+          if (videoReference !== undefined) {
+            videoReference.destroy();
+            videoReference = undefined;
+          }
+          reject();
+        }
         webContents.send(
           "playlist-progress",
           Math.floor((depth / inclusionSet.size) * 100)
         );
         playlistReference = {
-          destroy: () => {
+          destroy: async () => {
             if (videoReference !== undefined) {
-              videoReference.destroy();
+              await videoReference.destroy();
               videoReference = undefined;
             }
             reject();
           },
         };
-        extractVideoFromURL(
+        extractYTVideoFromURL(
           outputLocation,
           video.url,
           video.title,
           "playlist-video-progress",
           extension,
+          extractType,
           resolve
         );
       });
@@ -760,12 +1080,13 @@ const StateManager = createMachine(
     },
     actions: {
       startVideoExtract: function (context) {
-        extractVideoFromURL(
+        extractYTVideoFromURL(
           currLocation,
           context.videoDetails.fetchedUrl,
           context.videoDetails.title,
           "video-progress",
           currExportSettings.video.ext,
+          currExportSettings.video.type,
           function () {
             StateService.send("FINISH_VIDEO_EXTRACT");
           }
@@ -783,6 +1104,7 @@ const StateManager = createMachine(
           context.playlistDetails.fetchedUrl,
           context.playlistDetails.title,
           currExportSettings.playlist.ext,
+          currExportSettings.playlist.type,
           context.playlistDetails.included,
           function () {
             StateService.send("FINISH_PLAYLIST_EXTRACT");
