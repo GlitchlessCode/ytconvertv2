@@ -592,7 +592,7 @@ async function extractVideo(location, url, name, event, extension, videoFinish) 
         "pipe:3",
         "-i",
         "pipe:4",
-        // set movflags if mp4
+        // set movflags if not mkv
         ...(extension !== "mkv" ? ["-movflags", "frag_keyframe"] : []),
 
         // map audio and video
