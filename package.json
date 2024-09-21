@@ -25,16 +25,17 @@
     "fluent-ffmpeg": "^2.1.2",
     "xel": "^0.28.6",
     "xstate": "^4.38.2",
+    "yarn": "^1.22.22",
     "ytdl-core": "github:distubejs/ytdl-core#master",
     "ytpl": "^2.3.0"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^7.4.0",
-    "@electron-forge/maker-dmg": "^7.4.0",
-    "@electron-forge/maker-rpm": "^7.4.0",
-    "@electron-forge/maker-squirrel": "^7.4.0",
-    "@electron-forge/maker-zip": "^7.4.0",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.4.0",
-    "electron": "31.3.1"
+    "@electron-forge/cli": "^6.4.1",
+    "@electron-forge/maker-dmg": "^6.4.1",
+    "@electron-forge/maker-rpm": "^6.4.1",
+    "@electron-forge/maker-squirrel": "^6.4.1",
+    "@electron-forge/maker-zip": "^6.4.1",
+    "@electron-forge/plugin-auto-unpack-natives": "^6.4.1",
+    "electron": "26.2.4"
   }
 }
