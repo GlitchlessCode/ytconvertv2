@@ -1,10 +1,10 @@
 // APP VERSION
-const VERSION = "v1.3.1";
+const VERSION = "v1.3.2";
 
 // Imports
 const { app, BrowserWindow, ipcMain, screen, dialog, net, shell } = require("electron");
 const path = require("path");
-const ytdl = require("ytdl-core");
+const ytdl = require("@distube/ytdl-core");
 const ytpl = require("ytpl");
 const Store = require("electron-store");
 const { createMachine, interpret, assign } = require("xstate");
@@ -12,14 +12,20 @@ const fs = require("fs");
 const { raise } = require("xstate/lib/actions");
 const ffmpeg = require("fluent-ffmpeg");
 /** @type {string} */
+// @ts-expect-error
 const theoreticalPath = require("ffmpeg-static");
 const Deferred = require("./internal-modules/deferred");
 const child_process = require("child_process");
 const { PassThrough } = require("stream");
-const fileName = path.join(
-  process.resourcesPath,
-  theoreticalPath.match(/[\\\/](?:.(?![\\\/]))+$/)[0]
-);
+
+const fixedPath = theoreticalPath.match(/[\\\/](?:.(?![\\\/]))+$/);
+
+if (fixedPath == null) {
+  throw new TypeError("fixedPath should never be null");
+}
+
+const fileName = path.join(process.resourcesPath, fixedPath[0]);
+
 const trueFFmpegPath = path.resolve(
   (() => {
     if (fs.existsSync(fileName)) {
