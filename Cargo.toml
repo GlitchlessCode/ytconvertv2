@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 reqwest = { version = "0.12.12", features = ["blocking"] }
 vizia = {git = "https://github.com/vizia/vizia"}
+bon = "3.3"
