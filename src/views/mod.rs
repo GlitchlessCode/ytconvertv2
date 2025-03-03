@@ -3,4 +3,7 @@ use vizia::prelude::*;
 
 pub mod toolbar;
 
-pub use toolbar::Toolbar;
+pub mod all {
+    pub use super::toolbar::Toolbar;
+    pub use super::toolbar::ToolbarModifers;
+}

@@ -1,17 +1,17 @@
 .toolbar button {
-    font-size: 14;
-    height: 80%;
-    background-color: grey;
+  font-size: 14;
+  height: 80%;
+  background-color: grey;
 }
 
 .toolbar button.exit svg {
-    fill: red;
+  fill: red;
 }
 
 .toolbar button.exit {
-    background-color: rgba(255,100,100,0.3);
-    corner-radius: 3px;
-    height: 80%;
-    padding-left: 2px;
-    padding-right: 2px;
+  background-color: rgba(255, 100, 100, 0.3);
+  corner-radius: 3px;
+  height: 80%;
+  padding-left: 2px;
+  padding-right: 2px;
 }
