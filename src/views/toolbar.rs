@@ -37,13 +37,10 @@ impl Toolbar {
 
                     Element::new(cx).width(Stretch(1.0));
 
-                    #[cfg(not(windows))]
-                    {
-                        Button::new(cx, |cx| Svg::new(cx, ICON_X))
-                            .class("exit")
-                            .pointer_events(true)
-                            .on_press(|ex| ex.emit(ToolbarEvent::Exit));
-                    }
+                    Button::new(cx, |cx| Svg::new(cx, ICON_X))
+                        .class("exit")
+                        .pointer_events(true)
+                        .on_press(|ex| ex.emit(ToolbarEvent::Exit));
                 })
                 .padding_right(Pixels(4.0))
                 .padding_left(Pixels(4.0))
