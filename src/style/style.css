@@ -1,7 +1,18 @@
+:root {
+  background-color: transparent;
+  font-family: Quicksand;
+}
+
 .toolbar button {
   font-size: 14;
   height: 80%;
-  background-color: grey;
+  background-color: transparent;
+  transition: background-color 125ms;
+}
+
+.toolbar button:hover {
+  background-color: #ffffff22;
+  transition: background-color 125ms;
 }
 
 .toolbar button.exit svg {
@@ -14,4 +25,8 @@
   height: 80%;
   padding-left: 2px;
   padding-right: 2px;
+}
+
+button {
+  border: none;
 }

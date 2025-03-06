@@ -16,6 +16,10 @@ impl View for Toolbar {
             }
         });
     }
+
+    fn element(&self) -> Option<&'static str> {
+        Some("toolbar")
+    }
 }
 
 impl Toolbar {
@@ -26,13 +30,16 @@ impl Toolbar {
         Self { on_exit: None }
             .build(cx, |cx| {
                 HStack::new(cx, |cx| {
+                    // TODO: Add logo svg icon here
                     Button::new(cx, |cx| {
                         Label::new(cx, "Button").color(theme.map(|theme| theme.text_primary))
                     })
+                    .corner_radius(Pixels(2.0))
                     .pointer_events(true);
                     Button::new(cx, |cx| {
                         Label::new(cx, "Button").color(theme.map(|theme| theme.text_primary))
                     })
+                    .corner_radius(Pixels(2.0))
                     .pointer_events(true);
 
                     Element::new(cx).width(Stretch(1.0));

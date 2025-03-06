@@ -1,10 +1,14 @@
 use reqwest::blocking::Client;
 use vizia::prelude::*;
-use ytconvertv2::{include_bytes_safe, theme::Theme, views::all::*};
+use ytconvertv2::{
+    data::TaskQueue, include_bytes_safe, modifiers::ViewModifiers, theme::Theme, views::all::*,
+};
 
 #[derive(Lens)]
 pub struct AppData {
     theme: Theme,
+    task_queue: TaskQueue,
+
     #[cfg(windows)]
     maximized: bool,
 }
@@ -45,7 +49,7 @@ fn main() -> Result<(), ApplicationError> {
         }
 
         // Add font
-        let bytes = include_bytes_safe!("font", "Inter-VariableFont_opsz,wght.ttf");
+        let bytes = include_bytes_safe!("font", "Quicksand-Medium.ttf");
         cx.add_font_mem(bytes);
 
         // Add stylesheet
@@ -56,18 +60,23 @@ fn main() -> Result<(), ApplicationError> {
         AppData {
             // Build app theme
             theme: Theme::builder()
-                .background("#020e25")
-                .background_dark("#010819")
-                .background_light("#03132f")
+                .background("#020e31")
+                .background_dark("#010829")
+                .background_light("#031339")
                 .border("#344855")
                 .primary("gold")
                 .text_primary("#eeeeee")
+                .text_light("#57577f")
                 .build(),
+
+            task_queue: TaskQueue::default(),
+
             #[cfg(windows)]
             maximized: false,
         }
         .build(cx); // Build the data into the app
 
+        // Layer Stack
         ZStack::new(cx, |cx| {
             // Main element stack
             VStack::new(cx, |cx| {
@@ -76,17 +85,38 @@ fn main() -> Result<(), ApplicationError> {
                     Toolbar::new(cx, AppData::theme)
                         .on_exit(|ex| ex.emit(WindowEvent::WindowClose));
 
-                    // Sub toolbar stack
+                    // Sub tool stack
                     HStack::new(cx, |cx| {
-                        Divider::new(cx).background_color(AppData::theme.map(|theme| theme.border));
-                    });
+                        VStack::new(cx, |cx| {})
+                            .round_box(AppData::theme)
+                            .width(Stretch(1.0))
+                            .background_color(AppData::theme.map(|theme| theme.background_light));
+                        VStack::new(cx, |cx| {
+                            TaskQueueView::new(cx, AppData::theme, AppData::task_queue)
+                                .round_box(AppData::theme)
+                                .height(Stretch(1.0))
+                                .background_color(
+                                    AppData::theme.map(|theme| theme.background_light),
+                                );
+
+                            VStack::new(cx, |cx| {
+                                //ProgressBar goes here
+                            })
+                            .round_box(AppData::theme)
+                            .height(Pixels(120.0))
+                            .background_color(AppData::theme.map(|theme| theme.background_light));
+                        })
+                        .gap(Pixels(6.0))
+                        .width(Pixels(290.0));
+                    })
+                    .gap(Pixels(6.0));
                 })
                 .background_color(AppData::theme.map(|theme| theme.background))
                 .border_color(AppData::theme.map(|theme| theme.border))
                 .border_width(Pixels(1.0))
                 .padding(CORNER_SIZE)
                 .size(Percentage(100.0))
-                .gap(Pixels(3.0))
+                .gap(Pixels(6.0))
                 .corner_radius(CORNER_SIZE);
             })
             .padding(Pixels(4.0))
@@ -99,7 +129,7 @@ fn main() -> Result<(), ApplicationError> {
         });
     })
     .min_inner_size(Some((400, 300)))
-    .ignore_default_theme()
+    // .ignore_default_theme()
     .transparent(true)
     .decorations(false)
     .run()

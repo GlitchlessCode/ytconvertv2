@@ -3,7 +3,11 @@ use winit::window::ResizeDirection;
 
 pub struct Resizer;
 
-impl View for Resizer {}
+impl View for Resizer {
+    fn element(&self) -> Option<&'static str> {
+        Some("resizer")
+    }
+}
 
 impl Resizer {
     pub fn new(cx: &mut Context, direction: ResizerDirection) -> Handle<Self> {
@@ -94,4 +98,8 @@ impl ResizerGroup {
     }
 }
 
-impl View for ResizerGroup {}
+impl View for ResizerGroup {
+    fn element(&self) -> Option<&'static str> {
+        Some("resizergroup")
+    }
+}
