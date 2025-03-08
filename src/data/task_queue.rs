@@ -7,25 +7,6 @@ pub struct TaskQueue {
 
 impl Default for TaskQueue {
     fn default() -> Self {
-        Self {
-            tasks: vec![
-                (),
-                (),
-                (),
-                (),
-                (),
-                (),
-                (),
-                (),
-                (),
-                (),
-                (),
-                (),
-                (),
-                (),
-                (),
-                (),
-            ],
-        }
+        Self { tasks: Vec::new() }
     }
 }

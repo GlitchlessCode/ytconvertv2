@@ -1,7 +1,11 @@
+use std::path::PathBuf;
+
 use reqwest::blocking::Client;
-use vizia::prelude::*;
+use rfd::FileDialog;
+use vizia::{icons::ICON_FOLDER, prelude::*};
 use ytconvertv2::{
-    data::TaskQueue, include_bytes_safe, modifiers::ViewModifiers, theme::Theme, views::all::*,
+    data::TaskQueue, helpers::labelled, include_bytes_safe, modifiers::ViewModifiers, theme::Theme,
+    views::all::*,
 };
 
 #[derive(Lens)]
@@ -9,24 +13,46 @@ pub struct AppData {
     theme: Theme,
     task_queue: TaskQueue,
 
+    current_location: Option<PathBuf>,
+
     #[cfg(windows)]
     maximized: bool,
 }
 
 impl Model for AppData {
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
-        #[cfg(windows)]
-        {
-            event.map(|event, _meta| match event {
-                AppEvent::Maximized(is_max) => self.maximized = *is_max,
-            });
-        }
+        event.map(|event: &AppEvent, _meta| match event {
+            #[cfg(windows)]
+            AppEvent::Maximized(is_max) => self.maximized = *is_max,
+            AppEvent::RequestLocationChange => {
+                let current_location = self.current_location.clone();
+                cx.spawn(|cxp| {
+                    let mut dialog = FileDialog::new().set_title("Choose Export Location");
+                    if let Some(path) = current_location {
+                        dialog = dialog.set_directory(path);
+                    }
+                    if let Some(path) = dialog.pick_folder() {
+                        if let Err(error) = cxp.emit(AppEvent::SetNewLocation(path)) {
+                            eprintln!("Could not emit new location request, context proxy event emission failed due to error: {error}")
+                        }
+                    }
+                });
+            }
+            AppEvent::SetNewLocation(new_path) => {
+                self.current_location = Some(new_path.clone());
+            }
+            #[allow(unreachable_patterns)]
+            _ => (),
+        });
     }
 }
 
+#[non_exhaustive]
 enum AppEvent {
     #[cfg(windows)]
     Maximized(bool),
+    RequestLocationChange,
+    SetNewLocation(PathBuf),
 }
 
 static CORNER_SIZE: Units = Pixels(6.0);
@@ -60,16 +86,19 @@ fn main() -> Result<(), ApplicationError> {
         AppData {
             // Build app theme
             theme: Theme::builder()
-                .background("#020e31")
-                .background_dark("#010829")
-                .background_light("#031339")
-                .border("#344855")
+                .background("#252525")
+                .background_dark("#151515")
+                .background_light("#2f2f2f")
+                .border("#444444")
                 .primary("gold")
                 .text_primary("#eeeeee")
-                .text_light("#57577f")
+                .text_secondary("#aaaaaa")
+                .text_light("#575757")
                 .build(),
 
             task_queue: TaskQueue::default(),
+
+            current_location: None,
 
             #[cfg(windows)]
             maximized: false,
@@ -79,7 +108,8 @@ fn main() -> Result<(), ApplicationError> {
         // Layer Stack
         ZStack::new(cx, |cx| {
             // Main element stack
-            VStack::new(cx, |cx| {
+            #[allow(unused)]
+            let window = VStack::new(cx, |cx| {
                 VStack::new(cx, |cx| {
                     // Main Toolbar
                     Toolbar::new(cx, AppData::theme)
@@ -87,17 +117,62 @@ fn main() -> Result<(), ApplicationError> {
 
                     // Sub tool stack
                     HStack::new(cx, |cx| {
-                        VStack::new(cx, |cx| {})
-                            .round_box(AppData::theme)
-                            .width(Stretch(1.0))
-                            .background_color(AppData::theme.map(|theme| theme.background_light));
                         VStack::new(cx, |cx| {
-                            TaskQueueView::new(cx, AppData::theme, AppData::task_queue)
+                            labelled(cx, AppData::theme, "Export Path", |cx| {
+                                HStack::new(cx, |cx| {
+                                    ScrollView::new(cx, |cx| {
+                                        Label::new(
+                                            cx,
+                                            AppData::current_location.map(|loc| {
+                                                if let Some(path) = loc {
+                                                    path.display().to_string()
+                                                } else {
+                                                    "No Path Chosen".to_string()
+                                                }
+                                            }),
+                                        )
+                                        .padding(Pixels(6.0))
+                                        .color(AppData::theme.map(|theme| theme.text_primary));
+                                    })
+                                    .width(Stretch(1.0))
+                                    .show_horizontal_scrollbar(true);
+
+                                    Button::new(cx, |cx| Svg::new(cx, ICON_FOLDER))
+                                        .alignment(Alignment::Center)
+                                        .background_color(AppData::theme.map(|theme| theme.primary))
+                                        .on_press(|ex| ex.emit(AppEvent::RequestLocationChange));
+                                })
+                                .alignment(Alignment::Left)
+                                .height(Units::Auto)
                                 .round_box(AppData::theme)
-                                .height(Stretch(1.0))
                                 .background_color(
-                                    AppData::theme.map(|theme| theme.background_light),
+                                    AppData::theme.map(|theme| theme.background_dark),
                                 );
+                            })
+                            .height(Auto);
+
+                            labelled(cx, AppData::theme, "Export Settings", |cx| {
+                                VStack::new(cx, |cx| {})
+                                    .round_box(AppData::theme)
+                                    .background_color(
+                                        AppData::theme.map(|theme| theme.background_light),
+                                    )
+                                    .padding(Pixels(6.0));
+                            })
+                            .height(Stretch(1.0));
+                        })
+                        .gap(Pixels(3.0))
+                        .width(Stretch(1.0));
+
+                        VStack::new(cx, |cx| {
+                            labelled(cx, AppData::theme, "Tasks", |cx| {
+                                TaskQueueView::new(cx, AppData::theme, AppData::task_queue)
+                                    .round_box(AppData::theme)
+                                    .background_color(
+                                        AppData::theme.map(|theme| theme.background_light),
+                                    );
+                            })
+                            .height(Stretch(1.0));
 
                             VStack::new(cx, |cx| {
                                 //ProgressBar goes here
@@ -119,11 +194,11 @@ fn main() -> Result<(), ApplicationError> {
                 .gap(Pixels(6.0))
                 .corner_radius(CORNER_SIZE);
             })
-            .padding(Pixels(4.0))
             .position_type(PositionType::Relative);
 
             #[cfg(windows)]
             {
+                window = window.padding(Pixels(4.0));
                 ResizerGroup::new(cx).display(AppData::maximized.map(|max| !max));
             }
         });

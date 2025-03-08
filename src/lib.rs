@@ -2,6 +2,7 @@ use bon::Builder;
 use vizia::prelude::*;
 
 pub mod data;
+pub mod helpers;
 pub mod modifiers;
 pub mod theme;
 pub mod views;

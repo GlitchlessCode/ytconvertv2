@@ -3,6 +3,10 @@
   font-family: Quicksand;
 }
 
+.toolbar menubar svg {
+  fill: gold;
+}
+
 .toolbar button {
   font-size: 14;
   height: 80%;
@@ -10,8 +14,13 @@
   transition: background-color 125ms;
 }
 
-.toolbar button:hover {
-  background-color: #ffffff22;
+.toolbar .menubutton:hover {
+  background-color: #77777722;
+  transition: background-color 125ms;
+}
+
+.toolbar .menubutton:checked {
+  background-color: #77777777;
   transition: background-color 125ms;
 }
 

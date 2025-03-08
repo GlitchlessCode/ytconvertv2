@@ -1,4 +1,4 @@
-use vizia::icons::ICON_X;
+use vizia::icons::{ICON_TRIANGLE_INVERTED_FILLED, ICON_X};
 
 use super::*;
 
@@ -30,16 +30,20 @@ impl Toolbar {
         Self { on_exit: None }
             .build(cx, |cx| {
                 HStack::new(cx, |cx| {
-                    // TODO: Add logo svg icon here
-                    Button::new(cx, |cx| {
-                        Label::new(cx, "Button").color(theme.map(|theme| theme.text_primary))
+                    MenuBar::new(cx, |cx| {
+                        Svg::new(cx, ICON_TRIANGLE_INVERTED_FILLED);
+
+                        Submenu::new(cx, |cx| Label::new(cx, "File"), |cx| {})
+                            .color(theme.map(|theme| theme.text_primary))
+                            .class("menubutton");
+                        Submenu::new(cx, |cx| Label::new(cx, "View"), |cx| {})
+                            .color(theme.map(|theme| theme.text_primary))
+                            .class("menubutton");
+                        Submenu::new(cx, |cx| Label::new(cx, "Help"), |cx| {})
+                            .color(theme.map(|theme| theme.text_primary))
+                            .class("menubutton");
                     })
-                    .corner_radius(Pixels(2.0))
-                    .pointer_events(true);
-                    Button::new(cx, |cx| {
-                        Label::new(cx, "Button").color(theme.map(|theme| theme.text_primary))
-                    })
-                    .corner_radius(Pixels(2.0))
+                    .alignment(Alignment::Left)
                     .pointer_events(true);
 
                     Element::new(cx).width(Stretch(1.0));

@@ -12,5 +12,6 @@ pub struct Theme {
     pub border: Color,
 
     pub text_primary: Color,
+    pub text_secondary: Color,
     pub text_light: Color,
 }
