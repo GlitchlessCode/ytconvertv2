@@ -109,7 +109,7 @@ fn main() -> Result<(), ApplicationError> {
         ZStack::new(cx, |cx| {
             // Main element stack
             #[allow(unused)]
-            let window = VStack::new(cx, |cx| {
+            let mut window = VStack::new(cx, |cx| {
                 VStack::new(cx, |cx| {
                     // Main Toolbar
                     Toolbar::new(cx, AppData::theme)
