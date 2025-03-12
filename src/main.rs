@@ -1,10 +1,16 @@
 use std::path::PathBuf;
 
+use platform_dirs::AppDirs;
 use reqwest::blocking::Client;
 use rfd::FileDialog;
 use vizia::{icons::ICON_FOLDER, prelude::*};
 use ytconvertv2::{
-    data::TaskQueue, helpers::labelled, include_bytes_safe, modifiers::ViewModifiers, theme::Theme,
+    config::{ConfigEvent, ConfigModel},
+    data::TaskQueue,
+    helpers::labelled,
+    include_bytes_safe,
+    modifiers::ViewModifiers,
+    theme::Theme,
     views::all::*,
 };
 
@@ -38,12 +44,22 @@ impl Model for AppData {
                     }
                 });
             }
+
             AppEvent::SetNewLocation(new_path) => {
-                self.current_location = Some(new_path.clone());
+                self.current_location = Some(new_path.to_owned());
+                cx.emit(ConfigEvent::SetExportPath(new_path.to_owned()));
             }
+
             #[allow(unreachable_patterns)]
             _ => (),
         });
+
+        event.map(|event, _meta| match event {
+            ConfigEvent::ConfigSetup { location } => {
+                self.current_location = location.to_owned();
+            }
+            _ => (),
+        })
     }
 }
 
@@ -58,6 +74,8 @@ enum AppEvent {
 static CORNER_SIZE: Units = Pixels(6.0);
 
 fn main() -> Result<(), ApplicationError> {
+    let dirs = AppDirs::new(Some("ytconvertv2"), false);
+
     Application::new(|cx| {
         #[cfg(windows)]
         {
@@ -104,6 +122,10 @@ fn main() -> Result<(), ApplicationError> {
             maximized: false,
         }
         .build(cx); // Build the data into the app
+
+        ConfigModel::open_config_path(dirs).build(cx);
+
+        cx.emit(ConfigEvent::RequestSetup);
 
         // Layer Stack
         ZStack::new(cx, |cx| {

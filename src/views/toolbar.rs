@@ -1,4 +1,6 @@
-use vizia::icons::{ICON_TRIANGLE_INVERTED_FILLED, ICON_X};
+use vizia::icons::{ICON_BUG_FILLED, ICON_QUESTION_MARK, ICON_TRIANGLE_INVERTED_FILLED, ICON_X};
+
+use crate::modifiers::menu::MenuStyleModifier;
 
 use super::*;
 
@@ -9,11 +11,12 @@ pub struct Toolbar {
 impl View for Toolbar {
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
         event.map(|event, _meta| match event {
-            ToolbarEvent::Exit => {
+            ToolbarEvent::ExitApp => {
                 if let Some(callback) = &self.on_exit {
                     (callback)(cx);
                 }
             }
+            _ => (),
         });
     }
 
@@ -39,9 +42,39 @@ impl Toolbar {
                         Submenu::new(cx, |cx| Label::new(cx, "View"), |cx| {})
                             .color(theme.map(|theme| theme.text_primary))
                             .class("menubutton");
-                        Submenu::new(cx, |cx| Label::new(cx, "Help"), |cx| {})
-                            .color(theme.map(|theme| theme.text_primary))
-                            .class("menubutton");
+                        Submenu::new(
+                            cx,
+                            |cx| Label::new(cx, "Help"),
+                            move |cx| {
+                                MenuButton::new(
+                                    cx,
+                                    |ex| ex.emit(ToolbarEvent::ShowAbout),
+                                    |cx| {
+                                        HStack::new(cx, |cx| {
+                                            Svg::new(cx, ICON_QUESTION_MARK);
+                                            Label::new(cx, "About");
+                                        })
+                                    },
+                                )
+                                .default_menu_style(theme)
+                                .round_top(Pixels(3.0));
+
+                                MenuButton::new(
+                                    cx,
+                                    |ex| ex.emit(ToolbarEvent::OpenIssuesPage),
+                                    |cx| {
+                                        HStack::new(cx, |cx| {
+                                            Svg::new(cx, ICON_BUG_FILLED);
+                                            Label::new(cx, "Report Bugs");
+                                        })
+                                    },
+                                )
+                                .default_menu_style(theme)
+                                .round_bottom(Pixels(3.0));
+                            },
+                        )
+                        .color(theme.map(|theme| theme.text_primary))
+                        .class("menubutton");
                     })
                     .alignment(Alignment::Left)
                     .pointer_events(true);
@@ -51,7 +84,7 @@ impl Toolbar {
                     Button::new(cx, |cx| Svg::new(cx, ICON_X))
                         .class("exit")
                         .pointer_events(true)
-                        .on_press(|ex| ex.emit(ToolbarEvent::Exit));
+                        .on_press(|ex| ex.emit(ToolbarEvent::ExitApp));
                 })
                 .padding_right(Pixels(4.0))
                 .padding_left(Pixels(4.0))
@@ -71,7 +104,14 @@ impl Toolbar {
 }
 
 pub enum ToolbarEvent {
-    Exit,
+    // Help
+    ShowAbout,
+    OpenIssuesPage,
+    OpenDocumentationPage,
+    ShowLicense,
+
+    // Exit
+    ExitApp,
 }
 
 pub trait ToolbarModifers {

@@ -14,6 +14,11 @@
   transition: background-color 125ms;
 }
 
+.toolbar .menubutton popup {
+  padding: 0px;
+  border-color: #444444;
+}
+
 .toolbar .menubutton:hover {
   background-color: #77777722;
   transition: background-color 125ms;
