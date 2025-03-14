@@ -3,7 +3,11 @@ use std::path::PathBuf;
 use platform_dirs::AppDirs;
 use reqwest::blocking::Client;
 use rfd::FileDialog;
-use vizia::{icons::ICON_FOLDER, prelude::*};
+use vizia::{
+    animation::AnimId,
+    icons::{ICON_FOLDER, ICON_PLAYER_PLAY, ICON_PLAYLIST},
+    prelude::*,
+};
 use ytconvertv2::{
     config::{ConfigEvent, ConfigModel},
     data::TaskQueue,
@@ -18,6 +22,8 @@ use ytconvertv2::{
 pub struct AppData {
     theme: Theme,
     task_queue: TaskQueue,
+
+    playlist_selected: bool,
 
     current_location: Option<PathBuf>,
 
@@ -50,6 +56,14 @@ impl Model for AppData {
                 cx.emit(ConfigEvent::SetExportPath(new_path.to_owned()));
             }
 
+            AppEvent::ToggleVideo => {
+                self.playlist_selected = false;
+            }
+
+            AppEvent::TogglePlaylist => {
+                self.playlist_selected = true;
+            }
+
             #[allow(unreachable_patterns)]
             _ => (),
         });
@@ -65,10 +79,17 @@ impl Model for AppData {
 
 #[non_exhaustive]
 enum AppEvent {
+    // Windows only
     #[cfg(windows)]
     Maximized(bool),
+
+    // Export location
     RequestLocationChange,
     SetNewLocation(PathBuf),
+
+    // Toggle button
+    ToggleVideo,
+    TogglePlaylist,
 }
 
 static CORNER_SIZE: Units = Pixels(6.0);
@@ -116,6 +137,8 @@ fn main() -> Result<(), ApplicationError> {
 
             task_queue: TaskQueue::default(),
 
+            playlist_selected: false,
+
             current_location: None,
 
             #[cfg(windows)]
@@ -133,80 +156,7 @@ fn main() -> Result<(), ApplicationError> {
             #[allow(unused)]
             let mut window = VStack::new(cx, |cx| {
                 VStack::new(cx, |cx| {
-                    // Main Toolbar
-                    Toolbar::new(cx, AppData::theme)
-                        .on_exit(|ex| ex.emit(WindowEvent::WindowClose));
-
-                    // Sub tool stack
-                    HStack::new(cx, |cx| {
-                        VStack::new(cx, |cx| {
-                            labelled(cx, AppData::theme, "Export Path", |cx| {
-                                HStack::new(cx, |cx| {
-                                    ScrollView::new(cx, |cx| {
-                                        Label::new(
-                                            cx,
-                                            AppData::current_location.map(|loc| {
-                                                if let Some(path) = loc {
-                                                    path.display().to_string()
-                                                } else {
-                                                    "No Path Chosen".to_string()
-                                                }
-                                            }),
-                                        )
-                                        .padding(Pixels(6.0))
-                                        .color(AppData::theme.map(|theme| theme.text_primary));
-                                    })
-                                    .width(Stretch(1.0))
-                                    .show_horizontal_scrollbar(true);
-
-                                    Button::new(cx, |cx| Svg::new(cx, ICON_FOLDER))
-                                        .alignment(Alignment::Center)
-                                        .background_color(AppData::theme.map(|theme| theme.primary))
-                                        .on_press(|ex| ex.emit(AppEvent::RequestLocationChange));
-                                })
-                                .alignment(Alignment::Left)
-                                .height(Units::Auto)
-                                .round_box(AppData::theme)
-                                .background_color(
-                                    AppData::theme.map(|theme| theme.background_dark),
-                                );
-                            })
-                            .height(Auto);
-
-                            labelled(cx, AppData::theme, "Export Settings", |cx| {
-                                VStack::new(cx, |cx| {})
-                                    .round_box(AppData::theme)
-                                    .background_color(
-                                        AppData::theme.map(|theme| theme.background_light),
-                                    )
-                                    .padding(Pixels(6.0));
-                            })
-                            .height(Stretch(1.0));
-                        })
-                        .gap(Pixels(3.0))
-                        .width(Stretch(1.0));
-
-                        VStack::new(cx, |cx| {
-                            labelled(cx, AppData::theme, "Tasks", |cx| {
-                                TaskQueueView::new(cx, AppData::theme, AppData::task_queue)
-                                    .round_box(AppData::theme)
-                                    .background_color(
-                                        AppData::theme.map(|theme| theme.background_light),
-                                    );
-                            })
-                            .height(Stretch(1.0));
-
-                            VStack::new(cx, |cx| {
-                                //ProgressBar goes here
-                            })
-                            .round_box(AppData::theme)
-                            .height(Pixels(120.0))
-                            .background_color(AppData::theme.map(|theme| theme.background_light));
-                        })
-                        .gap(Pixels(6.0))
-                        .width(Pixels(290.0));
-                    })
-                    .gap(Pixels(6.0));
+                    main_content(cx);
                 })
                 .background_color(AppData::theme.map(|theme| theme.background))
                 .border_color(AppData::theme.map(|theme| theme.border))
@@ -230,4 +180,133 @@ fn main() -> Result<(), ApplicationError> {
     .transparent(true)
     .decorations(false)
     .run()
+}
+
+fn main_content(cx: &mut Context) {
+    // Main Toolbar
+    Toolbar::new(cx, AppData::theme).on_exit(|ex| ex.emit(WindowEvent::WindowClose));
+
+    // Sub tool stack
+    HStack::new(cx, |cx| {
+        VStack::new(cx, |cx| {
+            labelled(cx, AppData::theme, "Export Path", |cx| {
+                HStack::new(cx, |cx| {
+                    ScrollView::new(cx, |cx| {
+                        Label::new(
+                            cx,
+                            AppData::current_location.map(|loc| {
+                                if let Some(path) = loc {
+                                    path.display().to_string()
+                                } else {
+                                    "No Path Chosen".to_string()
+                                }
+                            }),
+                        )
+                        .padding(Pixels(6.0))
+                        .color(AppData::theme.map(|theme| theme.text_primary));
+                    })
+                    .width(Stretch(1.0))
+                    .show_horizontal_scrollbar(true);
+
+                    Button::new(cx, |cx| Svg::new(cx, ICON_FOLDER))
+                        .alignment(Alignment::Center)
+                        .background_color(AppData::theme.map(|theme| theme.primary))
+                        .on_press(|ex| ex.emit(AppEvent::RequestLocationChange));
+                })
+                .alignment(Alignment::Left)
+                .height(Units::Auto)
+                .round_box(AppData::theme)
+                .background_color(AppData::theme.map(|theme| theme.background_dark));
+            })
+            .height(Auto);
+
+            labelled(cx, AppData::theme, "Export Settings", |cx| {
+                ScrollView::new(cx, |cx| {
+                    draw_export_settings(cx);
+                })
+                .show_horizontal_scrollbar(true)
+                .show_vertical_scrollbar(false);
+            })
+            .height(Stretch(1.0));
+        })
+        .gap(Pixels(3.0))
+        .width(Stretch(1.0));
+
+        VStack::new(cx, |cx| {
+            labelled(cx, AppData::theme, "Tasks", |cx| {
+                TaskQueueView::new(cx, AppData::theme, AppData::task_queue)
+                    .round_box(AppData::theme)
+                    .background_color(AppData::theme.map(|theme| theme.background_light));
+            })
+            .height(Stretch(1.0));
+
+            VStack::new(cx, |cx| {
+                //ProgressBar goes here
+            })
+            .round_box(AppData::theme)
+            .height(Pixels(120.0))
+            .background_color(AppData::theme.map(|theme| theme.background_light));
+        })
+        .gap(Pixels(6.0))
+        .width(Pixels(290.0));
+    })
+    .gap(Pixels(6.0));
+}
+
+fn draw_export_settings(cx: &mut Context) {
+    VStack::new(cx, |cx| {
+        ToggleButtonPanel::new(
+            cx,
+            AppData::theme,
+            AppData::playlist_selected,
+            |cx| {
+                HStack::new(cx, |cx| {
+                    Svg::new(cx, ICON_PLAYER_PLAY);
+                    Label::new(cx, "Video")
+                        .font_size("large")
+                        .color(AppData::theme.map(|theme| theme.text_primary));
+                })
+                .alignment(Alignment::Center)
+            },
+            |cx| {
+                HStack::new(cx, |cx| {
+                    Svg::new(cx, ICON_PLAYLIST);
+                    Label::new(cx, "Playlist")
+                        .font_size("large")
+                        .color(AppData::theme.map(|theme| theme.text_primary));
+                })
+                .alignment(Alignment::Center)
+            },
+        )
+        .on_choose(|ex, side| match side {
+            ToggleButtonChoice::Left => ex.emit(AppEvent::ToggleVideo),
+            ToggleButtonChoice::Right => ex.emit(AppEvent::TogglePlaylist),
+        })
+        .round_box(AppData::theme)
+        .padding(Pixels(3.0))
+        .background_color(AppData::theme.map(|theme| theme.background_dark));
+
+        Binding::new(cx, AppData::playlist_selected, |cx, pl_selected| {
+            ScrollView::new(cx, move |cx| {
+                if pl_selected.get(cx) {
+                    playlist_settings(cx);
+                } else {
+                    video_settings(cx);
+                }
+            })
+            .show_horizontal_scrollbar(false)
+            .show_vertical_scrollbar(true);
+        });
+    })
+    .round_box(AppData::theme)
+    .background_color(AppData::theme.map(|theme| theme.background_light))
+    .padding(Pixels(6.0));
+}
+
+fn video_settings(cx: &mut Context) {
+    Label::new(cx, "Video");
+}
+
+fn playlist_settings(cx: &mut Context) {
+    Label::new(cx, "Playlist");
 }

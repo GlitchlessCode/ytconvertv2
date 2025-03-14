@@ -1,4 +1,7 @@
-use vizia::icons::{ICON_BUG_FILLED, ICON_QUESTION_MARK, ICON_TRIANGLE_INVERTED_FILLED, ICON_X};
+use vizia::icons::{
+    ICON_BUG_FILLED, ICON_FILE, ICON_LICENSE, ICON_QUESTION_MARK, ICON_TRIANGLE_INVERTED_FILLED,
+    ICON_X,
+};
 
 use crate::modifiers::menu::MenuStyleModifier;
 
@@ -54,8 +57,11 @@ impl Toolbar {
                                             Svg::new(cx, ICON_QUESTION_MARK);
                                             Label::new(cx, "About");
                                         })
+                                        .class("inner")
+                                        .corner_radius(Pixels(3.0))
                                     },
                                 )
+                                .padding(Pixels(0.0))
                                 .default_menu_style(theme)
                                 .round_top(Pixels(3.0));
 
@@ -67,8 +73,41 @@ impl Toolbar {
                                             Svg::new(cx, ICON_BUG_FILLED);
                                             Label::new(cx, "Report Bugs");
                                         })
+                                        .class("inner")
+                                        .corner_radius(Pixels(3.0))
                                     },
                                 )
+                                .padding(Pixels(0.0))
+                                .default_menu_style(theme);
+
+                                MenuButton::new(
+                                    cx,
+                                    |ex| ex.emit(ToolbarEvent::OpenDocumentationPage),
+                                    |cx| {
+                                        HStack::new(cx, |cx| {
+                                            Svg::new(cx, ICON_FILE);
+                                            Label::new(cx, "Documentation");
+                                        })
+                                        .class("inner")
+                                        .corner_radius(Pixels(3.0))
+                                    },
+                                )
+                                .padding(Pixels(0.0))
+                                .default_menu_style(theme);
+
+                                MenuButton::new(
+                                    cx,
+                                    |ex| ex.emit(ToolbarEvent::ShowLicense),
+                                    |cx| {
+                                        HStack::new(cx, |cx| {
+                                            Svg::new(cx, ICON_LICENSE);
+                                            Label::new(cx, "Licenses");
+                                        })
+                                        .class("inner")
+                                        .corner_radius(Pixels(3.0))
+                                    },
+                                )
+                                .padding(Pixels(0.0))
                                 .default_menu_style(theme)
                                 .round_bottom(Pixels(3.0));
                             },
