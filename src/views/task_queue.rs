@@ -1,4 +1,7 @@
-use crate::{data::TaskQueue, modifiers::ViewModifiers};
+use crate::{
+    data::{Task, TaskQueue},
+    modifiers::ViewModifiers,
+};
 
 use super::*;
 
@@ -23,8 +26,8 @@ impl TaskQueueView {
                     List::new(
                         cx,
                         task_queue.then(TaskQueue::tasks),
-                        move |cx, _task_queue, _task| {
-                            TaskView::new(cx, theme);
+                        move |cx, _task_queue, task| {
+                            TaskView::new(cx, theme, task.get(cx));
                         },
                     )
                     .padding_top(Pixels(6.0));
@@ -43,7 +46,7 @@ impl View for TaskQueueView {
 pub struct TaskView {}
 
 impl TaskView {
-    pub fn new<T>(cx: &mut Context, theme: T) -> Handle<Self>
+    pub fn new<T>(cx: &mut Context, theme: T, task: Task) -> Handle<Self>
     where
         T: Lens<Target = Theme>,
     {

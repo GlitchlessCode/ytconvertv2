@@ -4,7 +4,6 @@ use platform_dirs::AppDirs;
 use reqwest::blocking::Client;
 use rfd::FileDialog;
 use vizia::{
-    animation::AnimId,
     icons::{ICON_FOLDER, ICON_PLAYER_PLAY, ICON_PLAYLIST},
     prelude::*,
 };
@@ -15,7 +14,10 @@ use ytconvertv2::{
     include_bytes_safe,
     modifiers::ViewModifiers,
     theme::Theme,
-    views::all::*,
+    views::{
+        all::*,
+        animatedbinding::{AnimatedBindingModifiers, AnimationDef},
+    },
 };
 
 #[derive(Lens)]
@@ -221,11 +223,7 @@ fn main_content(cx: &mut Context) {
             .height(Auto);
 
             labelled(cx, AppData::theme, "Export Settings", |cx| {
-                ScrollView::new(cx, |cx| {
-                    draw_export_settings(cx);
-                })
-                .show_horizontal_scrollbar(true)
-                .show_vertical_scrollbar(false);
+                draw_export_settings(cx);
             })
             .height(Stretch(1.0));
         })
@@ -286,7 +284,18 @@ fn draw_export_settings(cx: &mut Context) {
         .padding(Pixels(3.0))
         .background_color(AppData::theme.map(|theme| theme.background_dark));
 
-        Binding::new(cx, AppData::playlist_selected, |cx, pl_selected| {
+        let anim_out = cx.add_animation(
+            AnimationBuilder::new()
+                .keyframe(0.0, |kf| kf.opacity(1.0).scale((1.0, 1.0)))
+                .keyframe(1.0, |kf| kf.opacity(0.0).scale((0.983, 0.983))),
+        );
+        let anim_in = cx.add_animation(
+            AnimationBuilder::new()
+                .keyframe(0.0, |kf| kf.opacity(0.0).scale((0.983, 0.983)))
+                .keyframe(1.0, |kf| kf.opacity(1.0).scale((1.0, 1.0))),
+        );
+
+        AnimatedBinding::new(cx, AppData::playlist_selected, |cx, pl_selected| {
             ScrollView::new(cx, move |cx| {
                 if pl_selected.get(cx) {
                     playlist_settings(cx);
@@ -296,17 +305,25 @@ fn draw_export_settings(cx: &mut Context) {
             })
             .show_horizontal_scrollbar(false)
             .show_vertical_scrollbar(true);
-        });
+        })
+        .set_anim_out(AnimationDef::new(
+            anim_out,
+            Duration::from_millis(150),
+            Duration::ZERO,
+        ))
+        .set_anim_in(AnimationDef::new(
+            anim_in,
+            Duration::from_millis(150),
+            Duration::ZERO,
+        ));
     })
     .round_box(AppData::theme)
     .background_color(AppData::theme.map(|theme| theme.background_light))
     .padding(Pixels(6.0));
 }
 
-fn video_settings(cx: &mut Context) {
-    Label::new(cx, "Video");
-}
+fn video_settings(cx: &mut Context) {}
 
 fn playlist_settings(cx: &mut Context) {
-    Label::new(cx, "Playlist");
+    Label::new(cx, "Playlist").color("white");
 }
