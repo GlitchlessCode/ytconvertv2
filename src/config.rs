@@ -1,20 +1,33 @@
 use std::{
-    ffi::OsStr,
     fs::OpenOptions,
     io::{Read, Write},
-    os::unix::ffi::OsStrExt,
+    os::windows::ffi::{OsStrExt, OsStringExt},
     path::PathBuf,
 };
+
+#[cfg(not(windows))]
+use std::os::{ffi::OsStr, unix::ffi::OsStrExt};
+
+#[cfg(windows)]
+use std::ffi::OsString;
 
 use nanoserde::{DeBin, SerBin};
 use platform_dirs::AppDirs;
 use vizia::prelude::*;
 
+#[cfg(windows)]
+#[derive(Debug, SerBin, DeBin)]
+pub struct SerializablePath {
+    path: Vec<u16>,
+}
+
+#[cfg(not(windows))]
 #[derive(Debug, SerBin, DeBin)]
 pub struct SerializablePath {
     path: Vec<u8>,
 }
 
+#[cfg(not(windows))]
 impl From<&Option<PathBuf>> for SerializablePath {
     fn from(value: &Option<PathBuf>) -> Self {
         let path: Vec<u8> = match value {
@@ -31,12 +44,40 @@ impl From<&Option<PathBuf>> for SerializablePath {
     }
 }
 
+#[cfg(not(windows))]
 impl From<&SerializablePath> for Option<PathBuf> {
     fn from(value: &SerializablePath) -> Self {
         if value.path.len() == 0 {
             None
         } else {
             Some(PathBuf::from(OsStr::from_bytes(&value.path)))
+        }
+    }
+}
+
+impl From<&Option<PathBuf>> for SerializablePath {
+    fn from(value: &Option<PathBuf>) -> Self {
+        let path: Vec<u16> = match value {
+            Some(path) => path
+                .as_os_str()
+                .encode_wide()
+                .into_iter()
+                // .map(|uint| uint.to_owned())
+                .collect(),
+            None => vec![],
+        };
+
+        Self { path }
+    }
+}
+
+#[cfg(windows)]
+impl From<&SerializablePath> for Option<PathBuf> {
+    fn from(value: &SerializablePath) -> Self {
+        if value.path.len() == 0 {
+            None
+        } else {
+            Some(PathBuf::from(OsString::from_wide(&value.path)))
         }
     }
 }
