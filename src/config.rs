@@ -1,15 +1,17 @@
 use std::{
     fs::OpenOptions,
     io::{Read, Write},
-    os::windows::ffi::{OsStrExt, OsStringExt},
     path::PathBuf,
 };
 
 #[cfg(not(windows))]
-use std::os::{ffi::OsStr, unix::ffi::OsStrExt};
+use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
 
 #[cfg(windows)]
-use std::ffi::OsString;
+use std::{
+    ffi::OsString,
+    os::windows::ffi::{OsStrExt, OsStringExt},
+};
 
 use nanoserde::{DeBin, SerBin};
 use platform_dirs::AppDirs;
@@ -55,6 +57,7 @@ impl From<&SerializablePath> for Option<PathBuf> {
     }
 }
 
+#[cfg(windows)]
 impl From<&Option<PathBuf>> for SerializablePath {
     fn from(value: &Option<PathBuf>) -> Self {
         let path: Vec<u16> = match value {
