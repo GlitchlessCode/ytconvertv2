@@ -4,7 +4,7 @@ use platform_dirs::AppDirs;
 use reqwest::blocking::Client;
 use rfd::FileDialog;
 use vizia::{
-    icons::{ICON_FOLDER, ICON_PLAYER_PLAY, ICON_PLAYLIST},
+    icons::{ICON_FOLDER, ICON_LIST, ICON_PLAYER_PLAY, ICON_RELOAD},
     prelude::*,
 };
 use ytconvertv2::{
@@ -19,6 +19,8 @@ use ytconvertv2::{
         animatedbinding::{AnimatedBindingModifiers, AnimationDef},
     },
 };
+
+static LARGE_PLACEHOLDER: &[u8] = include_bytes_safe!("img", "large_placeholder.png");
 
 #[derive(Lens)]
 pub struct AppData {
@@ -115,13 +117,7 @@ fn main() -> Result<(), ApplicationError> {
             cx.start_timer(maximized_timer);
         }
 
-        // Add font
-        let bytes = include_bytes_safe!("font", "Quicksand-Medium.ttf");
-        cx.add_font_mem(bytes);
-
-        // Add stylesheet
-        cx.add_stylesheet(include_style!("src/style/style.css"))
-            .expect("Failed to load stylesheet");
+        load_resources(cx);
 
         // Build in root data
         AppData {
@@ -177,11 +173,20 @@ fn main() -> Result<(), ApplicationError> {
             }
         });
     })
-    .min_inner_size(Some((400, 300)))
-    // .ignore_default_theme()
+    .min_inner_size(Some((600, 400)))
     .transparent(true)
     .decorations(false)
     .run()
+}
+
+fn load_resources(cx: &mut Context) {
+    // Add font
+    let bytes = include_bytes_safe!("font", "Quicksand-Medium.ttf");
+    cx.add_font_mem(bytes);
+
+    // Add stylesheet
+    cx.add_stylesheet(include_style!("src/style/style.css"))
+        .expect("Failed to load stylesheet");
 }
 
 fn main_content(cx: &mut Context) {
@@ -268,7 +273,7 @@ fn draw_export_settings(cx: &mut Context) {
             },
             |cx| {
                 HStack::new(cx, |cx| {
-                    Svg::new(cx, ICON_PLAYLIST);
+                    Svg::new(cx, ICON_LIST);
                     Label::new(cx, "Playlist")
                         .font_size("large")
                         .color(AppData::theme.map(|theme| theme.text_primary));
@@ -295,16 +300,23 @@ fn draw_export_settings(cx: &mut Context) {
                 .keyframe(1.0, |kf| kf.opacity(1.0).scale((1.0, 1.0))),
         );
 
+        AppVideoData {
+            client: Client::new(),
+
+            link: String::new(),
+        }
+        .build(cx);
+
         AnimatedBinding::new(cx, AppData::playlist_selected, |cx, pl_selected| {
-            ScrollView::new(cx, move |cx| {
+            HStack::new(cx, move |cx| {
                 if pl_selected.get(cx) {
                     playlist_settings(cx);
                 } else {
                     video_settings(cx);
                 }
             })
-            .show_horizontal_scrollbar(false)
-            .show_vertical_scrollbar(true);
+            .gap(Pixels(6.0))
+            .padding_top(Pixels(10.0));
         })
         .set_anim_out(AnimationDef::new(
             anim_out,
@@ -322,7 +334,84 @@ fn draw_export_settings(cx: &mut Context) {
     .padding(Pixels(6.0));
 }
 
-fn video_settings(cx: &mut Context) {}
+#[derive(Lens)]
+pub struct AppVideoData {
+    #[lens(ignore)]
+    client: Client,
+
+    link: String,
+}
+
+impl Model for AppVideoData {
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        event.take(|event, _meta| match event {
+            AppVideoEvent::LinkSubmit(text) => {
+                self.link = text;
+
+                let client = self.client.clone();
+                cx.spawn(move |cx| {
+                    let res = client
+                        .execute(
+                            client
+                                .get("https://placehold.co/100x100/png")
+                                .build()
+                                .unwrap(),
+                        )
+                        .unwrap();
+                    cx.load_image(
+                        "video_thumb".to_string(),
+                        &res.bytes().unwrap(),
+                        ImageRetentionPolicy::Forever,
+                    );
+                });
+            }
+            AppVideoEvent::Reset => self.link = String::new(),
+        });
+    }
+}
+
+pub enum AppVideoEvent {
+    LinkSubmit(String),
+    Reset,
+}
+
+fn video_settings(cx: &mut Context) {
+    labelled(cx, AppData::theme, "Youtube Link", |cx| {
+        HStack::new(cx, |cx| {
+            Textbox::new(cx, AppVideoData::link)
+                .round_box(AppData::theme)
+                .background_color(AppData::theme.map(|theme| theme.background_dark))
+                .color(AppData::theme.map(|theme| theme.text_primary))
+                .width(Stretch(1.0))
+                .on_submit(move |ex, text, _| ex.emit(AppVideoEvent::LinkSubmit(text)));
+
+            Button::new(cx, |cx| Svg::new(cx, ICON_RELOAD))
+                .class("std-btn")
+                .on_press(|ex| ex.emit(AppVideoEvent::Reset));
+        })
+        .height(Auto)
+        .gap(Pixels(6.0))
+        .alignment(Alignment::Center);
+
+        cx.load_image(
+            "video_thumb",
+            LARGE_PLACEHOLDER,
+            ImageRetentionPolicy::Forever,
+        );
+
+        HStack::new(cx, |cx| {
+            Image::new(cx, "video_thumb");
+            VStack::new(cx, |cx| {
+                Label::new(cx, "Title").color(AppData::theme.map(|theme| theme.text_primary));
+                Label::new(cx, "Channel")
+                    .font_size("small")
+                    .color(AppData::theme.map(|theme| theme.text_primary));
+            });
+        })
+        .gap(Pixels(6.0));
+    })
+    .height(Auto);
+}
 
 fn playlist_settings(cx: &mut Context) {
     Label::new(cx, "Playlist").color("white");

@@ -7,10 +7,22 @@
   fill: gold;
 }
 
-.toolbar button {
-  font-size: 14;
-  height: 80%;
+.std-btn svg {
+  fill: gold;
+}
+
+button.std-btn {
   background-color: transparent;
+  transition: background-color 125ms;
+}
+
+button.std-btn:hover {
+  background-color: #77777722;
+  transition: background-color 125ms;
+}
+
+button.std-btn:active {
+  background-color: #77777777;
   transition: background-color 125ms;
 }
 
@@ -74,4 +86,8 @@ togglebuttonpanel .bg.right {
 
 togglebuttonpanel svg {
   fill: gold;
+}
+
+textbox:checked.caret {
+  caret-color: gold;
 }
