@@ -8,6 +8,7 @@ use vizia::{
     prelude::*,
 };
 use ytconvertv2::{
+    async_logic::{run_event_loop, AsyncAppEvent},
     config::{ConfigEvent, ConfigModel},
     data::TaskQueue,
     helpers::labelled,
@@ -99,9 +100,18 @@ enum AppEvent {
 static CORNER_SIZE: Units = Pixels(6.0);
 
 fn main() -> Result<(), ApplicationError> {
+    let rt = tokio::runtime::Runtime::new().expect("Failed to boot tokio runtime");
+    let (async_tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+    let tokio_handle = std::thread::spawn(move || {
+        rt.block_on(async {
+            run_event_loop(rx).await;
+        });
+    });
+
     let dirs = AppDirs::new(Some("ytconvertv2"), false);
 
-    Application::new(|cx| {
+    let app_result = Application::new(|cx| {
         #[cfg(windows)]
         {
             // Check for maximization
@@ -176,7 +186,16 @@ fn main() -> Result<(), ApplicationError> {
     .min_inner_size(Some((600, 400)))
     .transparent(true)
     .decorations(false)
-    .run()
+    .run();
+
+    if let Err(_) = async_tx.send(AsyncAppEvent::Shutdown) {
+        eprintln!("Failed to send shutdown signal to tokio runtime");
+    }
+    if let Err(_) = tokio_handle.join() {
+        eprintln!("Failed to join on tokio runtime thread");
+    }
+
+    return app_result;
 }
 
 fn load_resources(cx: &mut Context) {

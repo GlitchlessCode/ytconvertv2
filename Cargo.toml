@@ -11,6 +11,10 @@ winit = "0.30.9"
 rfd = "0.15.2"
 platform-dirs = "0.3.0"
 nanoserde = "0.1.37"
+ffmpeg-sidecar = { version = "2.0.5" }
+youtube_dl = { version = "0.10.0", features = ["downloader-native-tls"] }
+tokio = { version = "1.44.2", features = ["full"] }
+temp-dir = "0.1.14"
 
 [profile.dev]
 incremental = true
