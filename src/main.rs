@@ -178,7 +178,7 @@ fn main() -> Result<(), ApplicationError> {
 
             #[cfg(windows)]
             {
-                window = window.padding(Pixels(4.0));
+                window.padding(Pixels(4.0));
                 ResizerGroup::new(cx).display(AppData::maximized.map(|max| !max));
             }
         });
@@ -367,22 +367,22 @@ impl Model for AppVideoData {
             AppVideoEvent::LinkSubmit(text) => {
                 self.link = text;
 
-                let client = self.client.clone();
-                cx.spawn(move |cx| {
-                    let res = client
-                        .execute(
-                            client
-                                .get("https://placehold.co/100x100/png")
-                                .build()
-                                .unwrap(),
-                        )
-                        .unwrap();
-                    cx.load_image(
-                        "video_thumb".to_string(),
-                        &res.bytes().unwrap(),
-                        ImageRetentionPolicy::Forever,
-                    );
-                });
+                // let client = self.client.clone();
+                // cx.spawn(move |cx| {
+                //     let res = client
+                //         .execute(
+                //             client
+                //                 .get("https://placehold.co/100x100/png")
+                //                 .build()
+                //                 .unwrap(),
+                //         )
+                //         .unwrap();
+                //     cx.load_image(
+                //         "video_thumb".to_string(),
+                //         &res.bytes().unwrap(),
+                //         ImageRetentionPolicy::Forever,
+                //     );
+                // });
             }
             AppVideoEvent::Reset => self.link = String::new(),
         });
@@ -412,14 +412,14 @@ fn video_settings(cx: &mut Context) {
         .gap(Pixels(6.0))
         .alignment(Alignment::Center);
 
-        cx.load_image(
-            "video_thumb",
-            LARGE_PLACEHOLDER,
-            ImageRetentionPolicy::Forever,
-        );
+        // cx.load_image(
+        //     "video_thumb",
+        //     LARGE_PLACEHOLDER,
+        //     ImageRetentionPolicy::Forever,
+        // );
 
         HStack::new(cx, |cx| {
-            Image::new(cx, "video_thumb");
+            // Image::new(cx, "video_thumb");
             VStack::new(cx, |cx| {
                 Label::new(cx, "Title").color(AppData::theme.map(|theme| theme.text_primary));
                 Label::new(cx, "Channel")

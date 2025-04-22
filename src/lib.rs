@@ -4,6 +4,7 @@ use vizia::prelude::*;
 pub mod async_logic;
 pub mod config;
 pub mod data;
+pub mod error;
 pub mod helpers;
 pub mod modifiers;
 pub mod theme;

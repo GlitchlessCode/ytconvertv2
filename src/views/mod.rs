@@ -2,6 +2,7 @@ use crate::theme::Theme;
 use vizia::prelude::*;
 
 pub mod animatedbinding;
+pub mod error;
 pub mod progressbar;
 pub mod resizer;
 pub mod task_queue;
