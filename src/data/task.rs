@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use vizia::prelude::*;
+use youtube_dl::SingleVideo;
 
 #[derive(Debug, Data, Clone)]
 pub struct Task {
@@ -12,16 +13,10 @@ impl Task {
     /// Create a new Video task
     ///
     /// `location` and `url` must both be valid
-    pub fn video(
-        location: PathBuf,
-        url: String,
-        author: String,
-        duration: u64,
-        thumbnail_id: Option<String>,
-    ) -> Self {
+    pub fn video(location: PathBuf, data: VideoData) -> Self {
         Self {
             export_location: location,
-            data: TaskData::video(url, author, duration, thumbnail_id),
+            data: TaskData::Video(data),
         }
     }
 
@@ -69,15 +64,6 @@ pub enum TaskData {
 }
 
 impl TaskData {
-    fn video(url: String, author: String, duration: u64, thumbnail_id: Option<String>) -> Self {
-        Self::Video(VideoData {
-            url,
-            author,
-            duration,
-            thumbnail_id,
-        })
-    }
-
     fn playlist(videos: Vec<VideoData>) -> Self {
         Self::Playlist(PlaylistData { videos })
     }
@@ -93,13 +79,18 @@ impl TaskData {
 
 #[derive(Debug, Data, Clone)]
 pub struct VideoData {
+    title: String,
     url: String,
     author: String,
     duration: u64,
-    thumbnail_id: Option<String>,
+    thumbnail_id: String,
 }
 
 impl VideoData {
+    pub fn title(&self) -> &String {
+        &self.title
+    }
+
     pub fn url(&self) -> &String {
         &self.url
     }
@@ -112,8 +103,27 @@ impl VideoData {
         self.duration
     }
 
-    pub fn thumbnail(&self) -> Option<&String> {
-        self.thumbnail_id.as_ref()
+    pub fn thumbnail(&self) -> &String {
+        &self.thumbnail_id
+    }
+}
+
+impl TryFrom<SingleVideo> for VideoData {
+    type Error = ();
+    fn try_from(value: SingleVideo) -> Result<Self, Self::Error> {
+        let title = value.title.ok_or(())?;
+        let url = format!("https://www.youtube.com/watch?v={}", value.id);
+        let author = value.channel.ok_or(())?;
+        let duration = value.duration.ok_or(())?.as_u64().ok_or(())?;
+        let thumbnail_id = format!("https://i.ytimg.com/vi/{}/mqdefault.jpg", value.id);
+
+        Ok(Self {
+            title,
+            url,
+            author,
+            duration,
+            thumbnail_id,
+        })
     }
 }
 

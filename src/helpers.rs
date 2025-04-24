@@ -22,3 +22,15 @@ where
     })
     .gap(Pixels(1.5))
 }
+
+pub fn format_seconds(seconds: u64) -> String {
+    let hours = seconds / 3600;
+    let minutes = seconds / 60 % 60;
+    let seconds = seconds % 60;
+
+    if hours > 0 {
+        format!("{hours:0>2}:{minutes:0>2}:{seconds:0>2}")
+    } else {
+        format!("{minutes:0>2}:{seconds:0>2}")
+    }
+}

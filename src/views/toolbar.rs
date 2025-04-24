@@ -1,11 +1,10 @@
 use vizia::icons::{
-    ICON_ALERT_HEXAGON_FILLED, ICON_BUG_FILLED, ICON_FILE, ICON_LICENSE, ICON_QUESTION_MARK,
-    ICON_TRIANGLE_INVERTED_FILLED, ICON_X,
+    ICON_ALERT_HEXAGON_FILLED, ICON_BUG_FILLED, ICON_FILE, ICON_LICENSE, ICON_QUESTION_MARK, ICON_X,
 };
 
 use crate::{
     error::{ErrorManager, ErrorManagerEvent},
-    modifiers::{menu::MenuStyleModifier, ViewModifiers},
+    modifiers::menu::MenuStyleModifier,
 };
 
 use super::*;
@@ -40,8 +39,6 @@ impl Toolbar {
             .build(cx, |cx| {
                 HStack::new(cx, |cx| {
                     MenuBar::new(cx, |cx| {
-                        Svg::new(cx, ICON_TRIANGLE_INVERTED_FILLED);
-
                         Submenu::new(cx, |cx| Label::new(cx, "File"), |cx| {})
                             .color(theme.map(|theme| theme.text_primary))
                             .class("menubutton");

@@ -1,18 +1,19 @@
 use std::path::PathBuf;
 
 use platform_dirs::AppDirs;
-use reqwest::blocking::Client;
+use reqwest::blocking::{Client, Response};
 use rfd::FileDialog;
 use vizia::{
     icons::{ICON_FOLDER, ICON_LIST, ICON_PLAYER_PLAY, ICON_RELOAD},
     prelude::*,
 };
+use youtube_dl::{YoutubeDl, YoutubeDlOutput};
 use ytconvertv2::{
     async_logic::{run_event_loop, AsyncAppEvent},
     config::{ConfigEvent, ConfigModel},
-    data::TaskQueue,
-    error::{error_popup, Error, ErrorManager},
-    helpers::labelled,
+    data::{task::VideoData, TaskQueue},
+    error::{error_popup, Error, ErrorManager, ErrorSeverity},
+    helpers::{format_seconds, labelled},
     include_bytes_safe,
     modifiers::ViewModifiers,
     theme::Theme,
@@ -82,6 +83,14 @@ impl Model for AppData {
         })
     }
 }
+
+#[derive(Lens)]
+pub struct AppAnimationData {
+    fade_in: Animation,
+    fade_out: Animation,
+}
+
+impl Model for AppAnimationData {}
 
 #[non_exhaustive]
 enum AppEvent {
@@ -159,6 +168,14 @@ fn main() -> Result<(), ApplicationError> {
         }
         .build(cx); // Build the data into the app
 
+        // Build Animation model in
+        AppAnimationData {
+            fade_in: cx.add_animation(AnimationBuilder::new().keyframe(0.0, |kf| kf.opacity(0.0)).keyframe(1.0, |kf| kf.opacity(1.0))),
+            fade_out: cx.add_animation(AnimationBuilder::new().keyframe(0.0, |kf| kf.opacity(1.0)).keyframe(1.0, |kf| kf.opacity(0.0)))
+        }
+        .build(cx);
+
+        // Build Config model in
         ConfigModel::open_config_path(dirs).build(cx);
 
         cx.emit(ConfigEvent::RequestSetup);
@@ -186,6 +203,13 @@ fn main() -> Result<(), ApplicationError> {
                 window.padding(Pixels(4.0));
                 ResizerGroup::new(cx).display(AppData::maximized.map(|max| !max));
             }
+
+            // Image loading
+            cx.load_image(
+                "video_thumb",
+                LARGE_PLACEHOLDER,
+                ImageRetentionPolicy::Forever,
+            );
         });
     })
     .min_inner_size(Some((600, 400)))
@@ -328,11 +352,15 @@ fn draw_export_settings(cx: &mut Context) {
             client: Client::new(),
 
             link: String::new(),
+
+            video: None,
+
+            thumbnail_generation: 0
         }
         .build(cx);
 
         AnimatedBinding::new(cx, AppData::playlist_selected, |cx, pl_selected| {
-            HStack::new(cx, move |cx| {
+            VStack::new(cx, move |cx| {
                 if pl_selected.get(cx) {
                     playlist_settings(cx);
                 } else {
@@ -364,6 +392,10 @@ pub struct AppVideoData {
     client: Client,
 
     link: String,
+
+    video: Option<VideoData>,
+
+    thumbnail_generation: usize,
 }
 
 impl Model for AppVideoData {
@@ -372,31 +404,157 @@ impl Model for AppVideoData {
             AppVideoEvent::LinkSubmit(text) => {
                 self.link = text;
 
-                // let client = self.client.clone();
-                // cx.spawn(move |cx| {
-                //     let res = client
-                //         .execute(
-                //             client
-                //                 .get("https://placehold.co/100x100/png")
-                //                 .build()
-                //                 .unwrap(),
-                //         )
-                //         .unwrap();
-                //     cx.load_image(
-                //         "video_thumb".to_string(),
-                //         &res.bytes().unwrap(),
-                //         ImageRetentionPolicy::Forever,
-                //     );
-                // });
+                if !self.link.trim().is_empty() {
+                    cx.emit(AppVideoEvent::TryVideoUrl(self.link.trim().to_owned()))
+                }
             }
             AppVideoEvent::Reset => self.link = String::new(),
+
+            // Try to get video info
+            AppVideoEvent::TryVideoUrl(url) => cx.spawn(|cx| fetch_video_data(cx, url)),
+            AppVideoEvent::UrlFailed => {
+                eprintln!("Bad Video")
+            }
+            AppVideoEvent::UrlSucceeded(data) => {
+                let thumbnail = data.thumbnail().to_owned();
+                let wrapped = Some(data);
+                if !self.video.same(&wrapped) {
+                    cx.emit(AppVideoEvent::FetchThumbnail(thumbnail));
+                    self.video = wrapped;
+                } 
+            }
+
+            // Link should be https://i.ytimg.com/vi/<video_id>/mqdefault.jpg
+            AppVideoEvent::FetchThumbnail(url) => {
+                let client = self.client.clone();
+                cx.spawn(move |cx| {
+                    let request = match client.get(&url).build() {
+                        Err(e) => {
+                            if let Err(_) = cx.emit(
+                                Error::new()
+                                .title("Reqwest Request Builder Failed")
+                                .code(200)
+                                .description(format!("Failed to create a build a Request due to the following error from reqwest: {e}"))
+                                .severity(ytconvertv2::error::ErrorSeverity::Warning)
+                                .build()
+                            ){
+                                eprintln!("Could not submit error event, failed to send event");
+                            }
+                            return
+                        }
+                        Ok(request) => request
+                    };
+
+                    let res = match client.execute(request) {
+                        Err(e) => {
+                            if let Err(_) = cx.emit(
+                                Error::new()
+                                .title("Reqwest Request Execution Failed")
+                                .code(201)
+                                .description(format!("Failed execute a built Request due to the following error from reqwest: {e}"))
+                                .severity(ytconvertv2::error::ErrorSeverity::Warning)
+                                .build()
+                            ){
+                                eprintln!("Could not submit error event, failed to send event");
+                            }
+                            return
+                        }
+                        Ok(response) => response
+                    };
+
+                    if let Err(_) = cx.emit(AppVideoEvent::FinishedThumbnailFetch(url, res)) {
+                        if let Err(_) = cx.emit(
+                            Error::new()
+                            .title("Event Emission Failure")
+                            .code(100)
+                            .description("Failed to emit an error to the context proxy while submitting an AppVideoEvent::FinishedThumbnailFetch event")
+                            .severity(ytconvertv2::error::ErrorSeverity::Warning)
+                            .build()
+                        ){
+                            eprintln!("Could not submit error event, failed to send event");
+                        }
+                    }
+                });
+            }
+            AppVideoEvent::FinishedThumbnailFetch(link, res) => {
+                if self.video.as_ref().is_some_and(|video| {
+                    *video.thumbnail() == link
+                }) {
+                    let image_data = match res.bytes(){
+                        Err(e) => {
+                            cx.emit(
+                                Error::new()
+                                .title("Reqwest Response Bytes Conversion Failed")
+                                .code(202)
+                                .description(format!("Failed convert a response to bytes due to the following error from reqwest: {e}"))
+                                .severity(ytconvertv2::error::ErrorSeverity::Warning)
+                                .build()
+                            );
+
+                            return
+                        }
+                        Ok(bytes) => bytes
+                    };
+
+                    if let Err(_) = cx.get_proxy().load_image(
+                        "video_thumb".to_string(),
+                        &image_data,
+                        ImageRetentionPolicy::Forever,
+                    ) {
+                        cx.emit(
+                            Error::new()
+                                .title("Image Loading Failed")
+                                .code(0)
+                                .severity(ErrorSeverity::Warning)
+                                .description("Failed to load a new thumbnail image for a video")
+                        );
+                    }
+
+                    self.thumbnail_generation += 1;
+                }
+            }
         });
+    }
+}
+
+fn fetch_video_data(cx: &mut ContextProxy, url: String) {
+    let event = YoutubeDl::new(url)
+        .flat_playlist(true)
+        .extra_arg("--skip-download")
+        .extra_arg("--no-playlist")
+        .run()
+        .inspect(|_| println!("Got Output"))
+        .ok()
+        .inspect(|_| println!("Got Some"))
+        .and_then(|output| match output {
+            // If the response is a playlist (should not be possible)
+            YoutubeDlOutput::Playlist(_) => None,
+            // If the response is a video
+            YoutubeDlOutput::SingleVideo(video) => Some(video),
+        })
+        .inspect(|_| println!("Got Video"))
+        .and_then(|video| VideoData::try_from(*video).ok());
+
+    let event = match event {
+        Some(data) => AppVideoEvent::UrlSucceeded(data),
+        None => AppVideoEvent::UrlFailed,
+    };
+
+    if let Err(_) = cx.emit(event) {
+        eprintln!("Could not submit error event, failed to send event");
     }
 }
 
 pub enum AppVideoEvent {
     LinkSubmit(String),
     Reset,
+
+    TryVideoUrl(String),
+    UrlFailed,
+    UrlSucceeded(VideoData),
+
+    FetchThumbnail(String),
+    FinishedThumbnailFetch(String, Response),
 }
 
 fn video_settings(cx: &mut Context) {
@@ -416,25 +574,74 @@ fn video_settings(cx: &mut Context) {
         .height(Auto)
         .gap(Pixels(6.0))
         .alignment(Alignment::Center);
-
-        // cx.load_image(
-        //     "video_thumb",
-        //     LARGE_PLACEHOLDER,
-        //     ImageRetentionPolicy::Forever,
-        // );
-
-        HStack::new(cx, |cx| {
-            // Image::new(cx, "video_thumb");
-            VStack::new(cx, |cx| {
-                Label::new(cx, "Title").color(AppData::theme.map(|theme| theme.text_primary));
-                Label::new(cx, "Channel")
-                    .font_size("small")
-                    .color(AppData::theme.map(|theme| theme.text_primary));
-            });
-        })
-        .gap(Pixels(6.0));
     })
     .height(Auto);
+
+    labelled(cx, AppData::theme, "Preview", |cx| {
+        HStack::new(cx, |cx| {
+            ZStack::new(cx, |cx| {
+                let fade_in = AppAnimationData::fade_in.get(cx);
+                
+                AnimatedBinding::new(cx, AppVideoData::thumbnail_generation, |cx, _| {
+                    Image::new(cx, "video_thumb").class("thumbnail-img").corner_radius(Pixels(8.0));
+                })
+                .set_anim_in(AnimationDef::new(fade_in, Duration::from_millis(400), Duration::ZERO));
+
+                VStack::new(cx, |cx| {
+                    Label::new(
+                        cx,
+                        AppVideoData::video.map(|video| {
+                            if let Some(video) = video {
+                                format_seconds(video.duration())
+                            } else {
+                                "??:??".to_string()
+                            }
+                        }),
+                    )
+                    .corner_radius(Pixels(2.0))
+                    .font_size("small")
+                    .padding(Pixels(2.0))
+                    .color("white")
+                    .background_color("black");
+                })
+                .width(Pixels(256.0))
+                .height(Pixels(144.0))
+                .padding(Pixels(8.0))
+                .alignment(Alignment::BottomRight);
+            })
+            .width(Pixels(256.0))
+            .height(Pixels(144.0));
+
+            VStack::new(cx, |cx| {
+                Label::new(
+                    cx,
+                    AppVideoData::video.map(|video| {
+                        if let Some(video) = video {
+                            video.title().clone()
+                        } else {
+                            "No Video Selected".to_string()
+                        }
+                    }),
+                )
+                .color(AppData::theme.map(|theme| theme.text_primary));
+                Label::new(
+                    cx,
+                    AppVideoData::video.map(|video| {
+                        if let Some(video) = video {
+                            video.author().clone()
+                        } else {
+                            "".to_string()
+                        }
+                    }),
+                )
+                .font_size("small")
+                .color(AppData::theme.map(|theme| theme.text_primary));
+            });
+        })
+        .overflow(Overflow::Hidden)
+        .gap(Pixels(6.0));
+    })
+    .top(Pixels(6.0));
 }
 
 fn playlist_settings(cx: &mut Context) {
