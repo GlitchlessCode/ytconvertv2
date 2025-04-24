@@ -11,6 +11,7 @@ use ytconvertv2::{
     async_logic::{run_event_loop, AsyncAppEvent},
     config::{ConfigEvent, ConfigModel},
     data::TaskQueue,
+    error::{error_popup, Error, ErrorManager},
     helpers::labelled,
     include_bytes_safe,
     modifiers::ViewModifiers,
@@ -128,6 +129,10 @@ fn main() -> Result<(), ApplicationError> {
         }
 
         load_resources(cx);
+
+        ErrorManager::default().build(cx);
+
+        error_popup(cx, AppData::theme);
 
         // Build in root data
         AppData {

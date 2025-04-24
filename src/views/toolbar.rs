@@ -1,9 +1,12 @@
 use vizia::icons::{
-    ICON_BUG_FILLED, ICON_FILE, ICON_LICENSE, ICON_QUESTION_MARK, ICON_TRIANGLE_INVERTED_FILLED,
-    ICON_X,
+    ICON_ALERT_HEXAGON_FILLED, ICON_BUG_FILLED, ICON_FILE, ICON_LICENSE, ICON_QUESTION_MARK,
+    ICON_TRIANGLE_INVERTED_FILLED, ICON_X,
 };
 
-use crate::modifiers::menu::MenuStyleModifier;
+use crate::{
+    error::{ErrorManager, ErrorManagerEvent},
+    modifiers::{menu::MenuStyleModifier, ViewModifiers},
+};
 
 use super::*;
 
@@ -117,6 +120,27 @@ impl Toolbar {
                     })
                     .alignment(Alignment::Left)
                     .pointer_events(true);
+
+                    Button::new(cx, |cx| {
+                        HStack::new(cx, |cx| {
+                            Svg::new(cx, ICON_ALERT_HEXAGON_FILLED);
+                            Label::new(
+                                cx,
+                                ErrorManager::errors.map(|errors| format!("{}", errors.len())),
+                            );
+                        })
+                    })
+                    .class("error-tag")
+                    .toggle_class(
+                        "error-tag-warn",
+                        ErrorManager::warning_count.map(|warns| *warns > 0),
+                    )
+                    .toggle_class(
+                        "error-tag-error",
+                        ErrorManager::error_count.map(|errs| *errs > 0),
+                    )
+                    .pointer_events(true)
+                    .on_press(|ex| ex.emit(ErrorManagerEvent::SetPopup(true)));
 
                     Element::new(cx).width(Stretch(1.0));
 

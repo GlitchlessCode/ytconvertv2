@@ -15,6 +15,7 @@ ffmpeg-sidecar = { version = "2.0.5" }
 youtube_dl = { version = "0.10.0", features = ["downloader-native-tls"] }
 tokio = { version = "1.44.2", features = ["full"] }
 temp-dir = "0.1.14"
+fuzzy-matcher = "0.3.7"
 
 [profile.dev]
 incremental = true
