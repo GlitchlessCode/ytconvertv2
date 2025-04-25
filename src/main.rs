@@ -1,111 +1,20 @@
-use std::path::PathBuf;
-
 use platform_dirs::AppDirs;
-use reqwest::blocking::{Client, Response};
-use rfd::FileDialog;
 use vizia::{
     icons::{ICON_FOLDER, ICON_LIST, ICON_PLAYER_PLAY, ICON_RELOAD},
     prelude::*,
 };
-use youtube_dl::{YoutubeDl, YoutubeDlOutput};
 use ytconvertv2::{
     async_logic::{run_event_loop, AsyncAppEvent},
     config::{ConfigEvent, ConfigModel},
-    data::{task::VideoData, TaskQueue},
+    data::TaskQueue,
     error::{error_popup, Error, ErrorManager, ErrorSeverity},
     helpers::{format_seconds, labelled},
     include_bytes_safe,
+    models::{all::*, video::LARGE_PLACEHOLDER},
     modifiers::ViewModifiers,
     theme::Theme,
-    views::{
-        all::*,
-        animatedbinding::{AnimatedBindingModifiers, AnimationDef},
-    },
+    views::all::*,
 };
-
-static LARGE_PLACEHOLDER: &[u8] = include_bytes_safe!("img", "large_placeholder.png");
-
-#[derive(Lens)]
-pub struct AppData {
-    theme: Theme,
-    task_queue: TaskQueue,
-
-    playlist_selected: bool,
-
-    current_location: Option<PathBuf>,
-
-    #[cfg(windows)]
-    maximized: bool,
-}
-
-impl Model for AppData {
-    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
-        event.map(|event: &AppEvent, _meta| match event {
-            #[cfg(windows)]
-            AppEvent::Maximized(is_max) => self.maximized = *is_max,
-            AppEvent::RequestLocationChange => {
-                let current_location = self.current_location.clone();
-                cx.spawn(|cxp| {
-                    let mut dialog = FileDialog::new().set_title("Choose Export Location");
-                    if let Some(path) = current_location {
-                        dialog = dialog.set_directory(path);
-                    }
-                    if let Some(path) = dialog.pick_folder() {
-                        if let Err(error) = cxp.emit(AppEvent::SetNewLocation(path)) {
-                            eprintln!("Could not emit new location request, context proxy event emission failed due to error: {error}")
-                        }
-                    }
-                });
-            }
-
-            AppEvent::SetNewLocation(new_path) => {
-                self.current_location = Some(new_path.to_owned());
-                cx.emit(ConfigEvent::SetExportPath(new_path.to_owned()));
-            }
-
-            AppEvent::ToggleVideo => {
-                self.playlist_selected = false;
-            }
-
-            AppEvent::TogglePlaylist => {
-                self.playlist_selected = true;
-            }
-
-            #[allow(unreachable_patterns)]
-            _ => (),
-        });
-
-        event.map(|event, _meta| match event {
-            ConfigEvent::ConfigSetup { location } => {
-                self.current_location = location.to_owned();
-            }
-            _ => (),
-        })
-    }
-}
-
-#[derive(Lens)]
-pub struct AppAnimationData {
-    fade_in: Animation,
-    fade_out: Animation,
-}
-
-impl Model for AppAnimationData {}
-
-#[non_exhaustive]
-enum AppEvent {
-    // Windows only
-    #[cfg(windows)]
-    Maximized(bool),
-
-    // Export location
-    RequestLocationChange,
-    SetNewLocation(PathBuf),
-
-    // Toggle button
-    ToggleVideo,
-    TogglePlaylist,
-}
 
 static CORNER_SIZE: Units = Pixels(6.0);
 
@@ -170,13 +79,24 @@ fn main() -> Result<(), ApplicationError> {
 
         // Build Animation model in
         AppAnimationData {
-            fade_in: cx.add_animation(AnimationBuilder::new().keyframe(0.0, |kf| kf.opacity(0.0)).keyframe(1.0, |kf| kf.opacity(1.0))),
-            fade_out: cx.add_animation(AnimationBuilder::new().keyframe(0.0, |kf| kf.opacity(1.0)).keyframe(1.0, |kf| kf.opacity(0.0)))
+            fade_in: cx.add_animation(
+                AnimationBuilder::new()
+                    .keyframe(0.0, |kf| kf.opacity(0.0))
+                    .keyframe(1.0, |kf| kf.opacity(1.0)),
+            ),
+            fade_out: cx.add_animation(
+                AnimationBuilder::new()
+                    .keyframe(0.0, |kf| kf.opacity(1.0))
+                    .keyframe(1.0, |kf| kf.opacity(0.0)),
+            ),
         }
         .build(cx);
 
         // Build Config model in
         ConfigModel::open_config_path(dirs).build(cx);
+
+        // Build notification model in
+        NotificationService::new(cx);
 
         cx.emit(ConfigEvent::RequestSetup);
 
@@ -195,6 +115,8 @@ fn main() -> Result<(), ApplicationError> {
                 .size(Percentage(100.0))
                 .gap(Pixels(6.0))
                 .corner_radius(CORNER_SIZE);
+
+                NotificationPopups::new(cx, AppData::theme);
             })
             .position_type(PositionType::Relative);
 
@@ -203,16 +125,10 @@ fn main() -> Result<(), ApplicationError> {
                 window.padding(Pixels(4.0));
                 ResizerGroup::new(cx).display(AppData::maximized.map(|max| !max));
             }
-
-            // Image loading
-            cx.load_image(
-                "video_thumb",
-                LARGE_PLACEHOLDER,
-                ImageRetentionPolicy::Forever,
-            );
         });
     })
     .min_inner_size(Some((600, 400)))
+    .inner_size((800, 600))
     .transparent(true)
     .decorations(false)
     .run();
@@ -235,6 +151,19 @@ fn load_resources(cx: &mut Context) {
     // Add stylesheet
     cx.add_stylesheet(include_style!("src/style/style.css"))
         .expect("Failed to load stylesheet");
+
+    // Add default thumbnails
+    cx.load_image(
+        "video_thumb",
+        LARGE_PLACEHOLDER,
+        ImageRetentionPolicy::Forever,
+    );
+
+    cx.load_image(
+        "playlist_thumb",
+        LARGE_PLACEHOLDER,
+        ImageRetentionPolicy::Forever,
+    );
 }
 
 fn main_content(cx: &mut Context) {
@@ -348,16 +277,7 @@ fn draw_export_settings(cx: &mut Context) {
                 .keyframe(1.0, |kf| kf.opacity(1.0).scale((1.0, 1.0))),
         );
 
-        AppVideoData {
-            client: Client::new(),
-
-            link: String::new(),
-
-            video: None,
-
-            thumbnail_generation: 0
-        }
-        .build(cx);
+        AppVideoData::new().build(cx);
 
         AnimatedBinding::new(cx, AppData::playlist_selected, |cx, pl_selected| {
             VStack::new(cx, move |cx| {
@@ -386,181 +306,11 @@ fn draw_export_settings(cx: &mut Context) {
     .padding(Pixels(6.0));
 }
 
-#[derive(Lens)]
-pub struct AppVideoData {
-    #[lens(ignore)]
-    client: Client,
-
-    link: String,
-
-    video: Option<VideoData>,
-
-    thumbnail_generation: usize,
-}
-
-impl Model for AppVideoData {
-    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
-        event.take(|event, _meta| match event {
-            AppVideoEvent::LinkSubmit(text) => {
-                self.link = text;
-
-                if !self.link.trim().is_empty() {
-                    cx.emit(AppVideoEvent::TryVideoUrl(self.link.trim().to_owned()))
-                }
-            }
-            AppVideoEvent::Reset => self.link = String::new(),
-
-            // Try to get video info
-            AppVideoEvent::TryVideoUrl(url) => cx.spawn(|cx| fetch_video_data(cx, url)),
-            AppVideoEvent::UrlFailed => {
-                eprintln!("Bad Video")
-            }
-            AppVideoEvent::UrlSucceeded(data) => {
-                let thumbnail = data.thumbnail().to_owned();
-                let wrapped = Some(data);
-                if !self.video.same(&wrapped) {
-                    cx.emit(AppVideoEvent::FetchThumbnail(thumbnail));
-                    self.video = wrapped;
-                } 
-            }
-
-            // Link should be https://i.ytimg.com/vi/<video_id>/mqdefault.jpg
-            AppVideoEvent::FetchThumbnail(url) => {
-                let client = self.client.clone();
-                cx.spawn(move |cx| {
-                    let request = match client.get(&url).build() {
-                        Err(e) => {
-                            if let Err(_) = cx.emit(
-                                Error::new()
-                                .title("Reqwest Request Builder Failed")
-                                .code(200)
-                                .description(format!("Failed to create a build a Request due to the following error from reqwest: {e}"))
-                                .severity(ytconvertv2::error::ErrorSeverity::Warning)
-                                .build()
-                            ){
-                                eprintln!("Could not submit error event, failed to send event");
-                            }
-                            return
-                        }
-                        Ok(request) => request
-                    };
-
-                    let res = match client.execute(request) {
-                        Err(e) => {
-                            if let Err(_) = cx.emit(
-                                Error::new()
-                                .title("Reqwest Request Execution Failed")
-                                .code(201)
-                                .description(format!("Failed execute a built Request due to the following error from reqwest: {e}"))
-                                .severity(ytconvertv2::error::ErrorSeverity::Warning)
-                                .build()
-                            ){
-                                eprintln!("Could not submit error event, failed to send event");
-                            }
-                            return
-                        }
-                        Ok(response) => response
-                    };
-
-                    if let Err(_) = cx.emit(AppVideoEvent::FinishedThumbnailFetch(url, res)) {
-                        if let Err(_) = cx.emit(
-                            Error::new()
-                            .title("Event Emission Failure")
-                            .code(100)
-                            .description("Failed to emit an error to the context proxy while submitting an AppVideoEvent::FinishedThumbnailFetch event")
-                            .severity(ytconvertv2::error::ErrorSeverity::Warning)
-                            .build()
-                        ){
-                            eprintln!("Could not submit error event, failed to send event");
-                        }
-                    }
-                });
-            }
-            AppVideoEvent::FinishedThumbnailFetch(link, res) => {
-                if self.video.as_ref().is_some_and(|video| {
-                    *video.thumbnail() == link
-                }) {
-                    let image_data = match res.bytes(){
-                        Err(e) => {
-                            cx.emit(
-                                Error::new()
-                                .title("Reqwest Response Bytes Conversion Failed")
-                                .code(202)
-                                .description(format!("Failed convert a response to bytes due to the following error from reqwest: {e}"))
-                                .severity(ytconvertv2::error::ErrorSeverity::Warning)
-                                .build()
-                            );
-
-                            return
-                        }
-                        Ok(bytes) => bytes
-                    };
-
-                    if let Err(_) = cx.get_proxy().load_image(
-                        "video_thumb".to_string(),
-                        &image_data,
-                        ImageRetentionPolicy::Forever,
-                    ) {
-                        cx.emit(
-                            Error::new()
-                                .title("Image Loading Failed")
-                                .code(0)
-                                .severity(ErrorSeverity::Warning)
-                                .description("Failed to load a new thumbnail image for a video")
-                        );
-                    }
-
-                    self.thumbnail_generation += 1;
-                }
-            }
-        });
-    }
-}
-
-fn fetch_video_data(cx: &mut ContextProxy, url: String) {
-    let event = YoutubeDl::new(url)
-        .flat_playlist(true)
-        .extra_arg("--skip-download")
-        .extra_arg("--no-playlist")
-        .run()
-        .inspect(|_| println!("Got Output"))
-        .ok()
-        .inspect(|_| println!("Got Some"))
-        .and_then(|output| match output {
-            // If the response is a playlist (should not be possible)
-            YoutubeDlOutput::Playlist(_) => None,
-            // If the response is a video
-            YoutubeDlOutput::SingleVideo(video) => Some(video),
-        })
-        .inspect(|_| println!("Got Video"))
-        .and_then(|video| VideoData::try_from(*video).ok());
-
-    let event = match event {
-        Some(data) => AppVideoEvent::UrlSucceeded(data),
-        None => AppVideoEvent::UrlFailed,
-    };
-
-    if let Err(_) = cx.emit(event) {
-        eprintln!("Could not submit error event, failed to send event");
-    }
-}
-
-pub enum AppVideoEvent {
-    LinkSubmit(String),
-    Reset,
-
-    TryVideoUrl(String),
-    UrlFailed,
-    UrlSucceeded(VideoData),
-
-    FetchThumbnail(String),
-    FinishedThumbnailFetch(String, Response),
-}
-
 fn video_settings(cx: &mut Context) {
     labelled(cx, AppData::theme, "Youtube Link", |cx| {
         HStack::new(cx, |cx| {
             Textbox::new(cx, AppVideoData::link)
+                .text_overflow(TextOverflow::Ellipsis)
                 .round_box(AppData::theme)
                 .background_color(AppData::theme.map(|theme| theme.background_dark))
                 .color(AppData::theme.map(|theme| theme.text_primary))
@@ -581,11 +331,17 @@ fn video_settings(cx: &mut Context) {
         HStack::new(cx, |cx| {
             ZStack::new(cx, |cx| {
                 let fade_in = AppAnimationData::fade_in.get(cx);
-                
+
                 AnimatedBinding::new(cx, AppVideoData::thumbnail_generation, |cx, _| {
-                    Image::new(cx, "video_thumb").class("thumbnail-img").corner_radius(Pixels(8.0));
+                    Image::new(cx, "video_thumb")
+                        .class("thumbnail-img")
+                        .corner_radius(Pixels(8.0));
                 })
-                .set_anim_in(AnimationDef::new(fade_in, Duration::from_millis(400), Duration::ZERO));
+                .set_anim_in(AnimationDef::new(
+                    fade_in,
+                    Duration::from_millis(400),
+                    Duration::ZERO,
+                ));
 
                 VStack::new(cx, |cx| {
                     Label::new(
@@ -638,10 +394,13 @@ fn video_settings(cx: &mut Context) {
                 .color(AppData::theme.map(|theme| theme.text_primary));
             });
         })
-        .overflow(Overflow::Hidden)
+        .overflowx(Overflow::Hidden)
         .gap(Pixels(6.0));
     })
+    .height(Pixels(164.0))
     .top(Pixels(6.0));
+
+    labelled(cx, AppData::theme, "Settings", |cx| {}).top(Pixels(6.0));
 }
 
 fn playlist_settings(cx: &mut Context) {

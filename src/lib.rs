@@ -6,6 +6,7 @@ pub mod config;
 pub mod data;
 pub mod error;
 pub mod helpers;
+pub mod models;
 pub mod modifiers;
 pub mod theme;
 pub mod views;
@@ -42,6 +43,6 @@ macro_rules! include_bytes_safe {
                 $extra,
             )*
 
-        ));
+        ))
     };
 }

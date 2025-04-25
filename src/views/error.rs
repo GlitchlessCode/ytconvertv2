@@ -1,4 +1,4 @@
-use vizia::icons::{ICON_ALERT_HEXAGON, ICON_ALERT_HEXAGON_FILLED};
+use vizia::icons::{ICON_ALERT_HEXAGON, ICON_HELP_HEXAGON};
 
 use crate::{
     error::{Error, ErrorSeverity},
@@ -17,10 +17,10 @@ impl ErrorView {
                     HStack::new(cx, |cx| {
                         match error.severity {
                             ErrorSeverity::Warning => {
-                                Svg::new(cx, ICON_ALERT_HEXAGON).class("warning-svg");
+                                Svg::new(cx, ICON_HELP_HEXAGON).class("warning-svg");
                             }
                             ErrorSeverity::Error => {
-                                Svg::new(cx, ICON_ALERT_HEXAGON_FILLED).class("error-svg");
+                                Svg::new(cx, ICON_ALERT_HEXAGON).class("error-svg");
                             }
                         }
 

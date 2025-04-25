@@ -131,6 +131,14 @@ textbox:checked.caret {
     fill: #fffb55;
 }
 
+.success-svg {
+  fill: #55ff58;
+}
+
+.info-svg {
+  fill: #5590ff;
+}
+
 .thumbnail-img {
     background-size: contain;
     width: 256px;
