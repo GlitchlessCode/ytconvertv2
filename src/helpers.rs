@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use vizia::prelude::*;
 
 use crate::theme::Theme;
@@ -32,5 +34,17 @@ pub fn format_seconds(seconds: u64) -> String {
         format!("{hours:0>2}:{minutes:0>2}:{seconds:0>2}")
     } else {
         format!("{minutes:0>2}:{seconds:0>2}")
+    }
+}
+
+pub trait ContextProxyExt {
+    fn emit_print_err<M: Any + Send>(&mut self, msg: M);
+}
+
+impl ContextProxyExt for ContextProxy {
+    fn emit_print_err<M: Any + Send>(&mut self, msg: M) {
+        if let Err(err) = self.emit(msg) {
+            eprintln!("Failed to submit event to context proxy due to error: {err}")
+        }
     }
 }

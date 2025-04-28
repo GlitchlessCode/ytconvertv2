@@ -8,7 +8,7 @@ use ytconvertv2::{
     config::{ConfigEvent, ConfigModel},
     data::TaskQueue,
     error::{error_popup, Error, ErrorManager, ErrorSeverity},
-    helpers::{format_seconds, labelled},
+    helpers::{format_seconds, labelled, ContextProxyExt},
     include_bytes_safe,
     models::{all::*, video::LARGE_PLACEHOLDER},
     modifiers::ViewModifiers,
@@ -30,7 +30,9 @@ fn main() -> Result<(), ApplicationError> {
 
     let dirs = AppDirs::new(Some("ytconvertv2"), false);
 
-    let app_result = Application::new(|cx| {
+    let inner_async_tx = async_tx.clone();
+    let app_result = Application::new(move |cx| {
+        let async_tx = inner_async_tx;
         #[cfg(windows)]
         {
             // Check for maximization
@@ -52,6 +54,12 @@ fn main() -> Result<(), ApplicationError> {
 
         error_popup(cx, AppData::theme);
 
+        let dependency_dir = dirs
+            .clone()
+            .map(|dirs| dirs.data_dir)
+            .expect("Should have data directory")
+            .join("dependencies");
+
         // Build in root data
         AppData {
             // Build app theme
@@ -71,6 +79,7 @@ fn main() -> Result<(), ApplicationError> {
             playlist_selected: false,
 
             current_location: None,
+            yt_dlp_path: dependency_dir.clone().join("ytdlp"),
 
             #[cfg(windows)]
             maximized: false,
@@ -99,6 +108,11 @@ fn main() -> Result<(), ApplicationError> {
         NotificationService::new(cx);
 
         cx.emit(ConfigEvent::RequestSetup);
+
+        let submission_tx = async_tx.clone();
+        update_yt_dlp(cx, submission_tx);
+
+        update_ffmpeg(cx);
 
         // Layer Stack
         ZStack::new(cx, |cx| {
@@ -164,6 +178,184 @@ fn load_resources(cx: &mut Context) {
         LARGE_PLACEHOLDER,
         ImageRetentionPolicy::Forever,
     );
+}
+
+fn update_yt_dlp(
+    cx: &mut Context,
+    submission_tx: tokio::sync::mpsc::UnboundedSender<AsyncAppEvent>,
+) {
+    let yt_dlp = AppData::yt_dlp_path.get(cx);
+    cx.emit(
+        Notification::new()
+            .message("Updating yt-dlp...")
+            .level(NotificationLevel::Info)
+            .build(),
+    );
+    cx.spawn(move |cx| {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        if let Err(_) = submission_tx.send(AsyncAppEvent::UpdateYtdlp(yt_dlp, tx)) {
+            if let Err(_) = cx.emit(
+                Error::new()
+                    .code(2)
+                    .description("Failed to send yt-dlp download signal to tokio task")
+                    .title("MPSC Channel Send Failure")
+                    .severity(ErrorSeverity::Error)
+                    .build(),
+            ) {
+                eprintln!("Could not submit error event, failed to send event");
+            }
+        }
+        match rx.blocking_recv() {
+            Err(_) => {
+                if let Err(_) = cx.emit(
+                    Error::new()
+                        .code(1)
+                        .description("Failed to recieve from yt-dlp downloader oneshot channel")
+                        .title("Oneshot Channel Reciever Failure")
+                        .severity(ErrorSeverity::Error)
+                        .build(),
+                ) {
+                    eprintln!("Could not submit error event, failed to send event");
+                }
+            }
+            Ok(result) => {
+                if let Err(error) = result {
+                    let msg = format!("Failed to download yt-dlp due to error: {error}");
+                    if let Err(_) = cx.emit(
+                        Error::new()
+                            .code(300)
+                            .description(msg)
+                            .title("yt-dlp Download Failure")
+                            .severity(ErrorSeverity::Error)
+                            .build(),
+                    ) {
+                        eprintln!("Could not submit error event, failed to send event");
+                    }
+                } else {
+                    if let Err(_) = cx.emit(
+                        Notification::new()
+                            .message("Updated yt-dlp successfully")
+                            .level(NotificationLevel::Success)
+                            .build(),
+                    ) {
+                        eprintln!("Could not submit error event, failed to send event");
+                    };
+                }
+            }
+        }
+    });
+}
+
+fn update_ffmpeg(cx: &mut Context) {
+    use ffmpeg_sidecar::command::ffmpeg_is_installed;
+
+    cx.emit(
+        Notification::new()
+            .message("Checking ffmpeg for updates")
+            .level(NotificationLevel::Info)
+            .build(),
+    );
+
+    cx.spawn(|cx| {
+        match update_ffmpeg_inner(cx) {
+            Ok(_) => (),
+            Err(_) => cx.emit_print_err(
+                Error::new()
+                    .code(3)
+                    .title("Dependency ffmpeg Installation Failed")
+                    .severity(ErrorSeverity::Error)
+                    .description("Failed to install ffmpeg due to an unknown error.")
+                    .build(),
+            ),
+        }
+
+        // Error, ffmpeg should now be installed
+        if !ffmpeg_is_installed() {
+            let msg =
+                "Cannot detect an ffmpeg installation after completing the installation process.";
+
+            cx.emit_print_err(
+                Error::new()
+                    .code(4)
+                    .title("Dependency ffmpeg Unexpectedly Missing")
+                    .severity(ErrorSeverity::Error)
+                    .description(msg)
+                    .footer(|cx| install_ffmpeg_footer(cx))
+                    .build(),
+            );
+            cx.emit_print_err(
+                Notification::new()
+                    .message("Please try installing ffmpeg manually")
+                    .level(NotificationLevel::Error)
+                    .build(),
+            );
+        } else {
+            cx.emit_print_err(
+                Notification::new()
+                    .message("Updated ffmpeg successfully")
+                    .level(NotificationLevel::Success)
+                    .build(),
+            );
+        }
+    });
+}
+
+fn install_ffmpeg_footer(cx: &mut Context) {
+    HStack::new(cx, |cx| {
+        Button::new(cx, |cx| Label::new(cx, "Download ffmpeg...")).on_press(|_| {
+            if let Err(_) = open::that("https://www.ffmpeg.org/download.html") {
+                eprintln!("Error opening url");
+            }
+        });
+    });
+}
+
+fn update_ffmpeg_inner(cx: &mut ContextProxy) -> Result<(), ()> {
+    use ffmpeg_sidecar::command::ffmpeg_is_installed;
+    use ffmpeg_sidecar::download::{
+        check_latest_version, download_ffmpeg_package, ffmpeg_download_url, unpack_ffmpeg,
+    };
+    use ffmpeg_sidecar::paths::sidecar_dir;
+    use ffmpeg_sidecar::version::ffmpeg_version;
+
+    if ffmpeg_is_installed() {
+        let current_version = ffmpeg_version().map_err(|_| ())?;
+        let latest_version = check_latest_version().map_err(|_| ())?;
+
+        if !current_version.starts_with(&latest_version) {
+            cx.emit_print_err(
+                Notification::new()
+                    .message("Updating ffmpeg...")
+                    .level(NotificationLevel::Info)
+                    .build(),
+            );
+            let download_url = ffmpeg_download_url().map_err(|_| ())?;
+            let destination = sidecar_dir().map_err(|_| ())?;
+            let archive_path =
+                download_ffmpeg_package(download_url, &destination).map_err(|_| ())?;
+            unpack_ffmpeg(&archive_path, &destination).map_err(|_| ())?;
+        } else {
+            cx.emit_print_err(
+                Notification::new()
+                    .message("ffmpeg is already up to date")
+                    .level(NotificationLevel::Info)
+                    .build(),
+            );
+        }
+    } else {
+        cx.emit_print_err(
+            Notification::new()
+                .message("Updating ffmpeg...")
+                .level(NotificationLevel::Info)
+                .build(),
+        );
+        let download_url = ffmpeg_download_url().map_err(|_| ())?;
+        let destination = sidecar_dir().map_err(|_| ())?;
+        let archive_path = download_ffmpeg_package(download_url, &destination).map_err(|_| ())?;
+        unpack_ffmpeg(&archive_path, &destination).map_err(|_| ())?;
+    }
+
+    Ok(())
 }
 
 fn main_content(cx: &mut Context) {
@@ -277,7 +469,7 @@ fn draw_export_settings(cx: &mut Context) {
                 .keyframe(1.0, |kf| kf.opacity(1.0).scale((1.0, 1.0))),
         );
 
-        AppVideoData::new().build(cx);
+        AppVideoData::new(AppData::yt_dlp_path.get(cx).join("yt-dlp.exe")).build(cx);
 
         AnimatedBinding::new(cx, AppData::playlist_selected, |cx, pl_selected| {
             VStack::new(cx, move |cx| {
@@ -310,7 +502,6 @@ fn video_settings(cx: &mut Context) {
     labelled(cx, AppData::theme, "Youtube Link", |cx| {
         HStack::new(cx, |cx| {
             Textbox::new(cx, AppVideoData::link)
-                .text_overflow(TextOverflow::Ellipsis)
                 .round_box(AppData::theme)
                 .background_color(AppData::theme.map(|theme| theme.background_dark))
                 .color(AppData::theme.map(|theme| theme.text_primary))

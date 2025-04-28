@@ -11,6 +11,7 @@ pub struct AppData {
     pub playlist_selected: bool,
 
     pub current_location: Option<PathBuf>,
+    pub yt_dlp_path: PathBuf,
 
     #[cfg(windows)]
     pub maximized: bool,

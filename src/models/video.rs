@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use super::*;
 use crate::{
     data::task::VideoData,
@@ -20,15 +22,19 @@ pub struct AppVideoData {
     pub video: Option<VideoData>,
 
     pub thumbnail_generation: usize,
+
+    #[lens(ignore)]
+    yt_dlp: PathBuf,
 }
 
 impl AppVideoData {
-    pub fn new() -> Self {
+    pub fn new(yt_dlp: PathBuf) -> Self {
         Self {
             client: Client::new(),
             link: String::new(),
             video: None,
             thumbnail_generation: 0,
+            yt_dlp,
         }
     }
 
@@ -99,7 +105,10 @@ impl Model for AppVideoData {
             }
             AppVideoEvent::Reset => self.link = String::new(),
             // Try to get video info
-            AppVideoEvent::TryVideoUrl(url) => cx.spawn(|cx| fetch_video_data(cx, url)),
+            AppVideoEvent::TryVideoUrl(url) => {
+                let yt_dlp = self.yt_dlp.clone();
+                cx.spawn(|cx| fetch_video_data(cx, url, yt_dlp))
+            }
             AppVideoEvent::UrlFailed => {
                 cx.emit(
                     Notification::new()
@@ -151,8 +160,9 @@ impl Model for AppVideoData {
     }
 }
 
-fn fetch_video_data(cx: &mut ContextProxy, url: String) {
+fn fetch_video_data(cx: &mut ContextProxy, url: String, yt_dlp: PathBuf) {
     let event = YoutubeDl::new(url)
+        .youtube_dl_path(yt_dlp)
         .flat_playlist(true)
         .extra_arg("--skip-download")
         .extra_arg("--no-playlist") // Restrict to videos only
