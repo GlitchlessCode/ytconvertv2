@@ -37,6 +37,15 @@ pub fn format_seconds(seconds: u64) -> String {
     }
 }
 
+static INVALID_CHARS: [char; 9] = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
+
+pub fn make_filename_valid(filename: String) -> String {
+    filename
+        .chars()
+        .map(|ch| if INVALID_CHARS.contains(&ch) { '_' } else { ch })
+        .collect()
+}
+
 pub trait ContextProxyExt {
     fn emit_print_err<M: Any + Send>(&mut self, msg: M);
 }

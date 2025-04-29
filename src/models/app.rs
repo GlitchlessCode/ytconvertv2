@@ -12,6 +12,7 @@ pub struct AppData {
 
     pub current_location: Option<PathBuf>,
     pub yt_dlp_path: PathBuf,
+    pub ffmpeg_install_state: FfmpegInstallState,
 
     #[cfg(windows)]
     pub maximized: bool,
@@ -42,6 +43,10 @@ impl Model for AppData {
                 cx.emit(ConfigEvent::SetExportPath(new_path.to_owned()));
             }
 
+            AppEvent::SetFfmpegInstallState(state) => {
+                self.ffmpeg_install_state = state.clone();
+            }
+
             AppEvent::ToggleVideo => {
                 self.playlist_selected = false;
             }
@@ -59,7 +64,7 @@ impl Model for AppData {
                 self.current_location = location.to_owned();
             }
             _ => (),
-        })
+        });
     }
 }
 
@@ -73,7 +78,21 @@ pub enum AppEvent {
     RequestLocationChange,
     SetNewLocation(PathBuf),
 
+    // Ffmpeg install
+    SetFfmpegInstallState(FfmpegInstallState),
+
     // Toggle button
     ToggleVideo,
     TogglePlaylist,
+}
+
+#[derive(Clone)]
+pub enum FfmpegInstallState {
+    Installed,
+    Installing,
+    Updating,
+
+    Failed,
+    Missing,
+    Unknown,
 }

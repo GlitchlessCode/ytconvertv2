@@ -1,6 +1,9 @@
 use platform_dirs::AppDirs;
 use vizia::{
-    icons::{ICON_FOLDER, ICON_LIST, ICON_PLAYER_PLAY, ICON_RELOAD},
+    icons::{
+        ICON_FOLDER, ICON_LIST, ICON_PLAYER_PLAY, ICON_RELOAD,
+        ICON_SQUARE_ROUNDED_CHEVRONS_RIGHT_FILLED,
+    },
     prelude::*,
 };
 use ytconvertv2::{
@@ -10,7 +13,11 @@ use ytconvertv2::{
     error::{error_popup, Error, ErrorManager, ErrorSeverity},
     helpers::{format_seconds, labelled, ContextProxyExt},
     include_bytes_safe,
-    models::{all::*, video::LARGE_PLACEHOLDER},
+    models::{
+        all::*,
+        app::FfmpegInstallState,
+        video::{ExportType, VideoExportSettings, VideoExportSettingsEvent, LARGE_PLACEHOLDER},
+    },
     modifiers::ViewModifiers,
     theme::Theme,
     views::all::*,
@@ -80,6 +87,7 @@ fn main() -> Result<(), ApplicationError> {
 
             current_location: None,
             yt_dlp_path: dependency_dir.clone().join("ytdlp"),
+            ffmpeg_install_state: FfmpegInstallState::Unknown,
 
             #[cfg(windows)]
             maximized: false,
@@ -258,16 +266,33 @@ fn update_ffmpeg(cx: &mut Context) {
 
     cx.spawn(|cx| {
         match update_ffmpeg_inner(cx) {
-            Ok(_) => (),
-            Err(_) => cx.emit_print_err(
-                Error::new()
-                    .code(3)
-                    .title("Dependency ffmpeg Installation Failed")
-                    .severity(ErrorSeverity::Error)
-                    .description("Failed to install ffmpeg due to an unknown error.")
-                    .build(),
-            ),
-        }
+            Ok(updated) => {
+                if !updated {
+                    cx.emit_print_err(
+                        Notification::new()
+                            .message("ffmpeg is already up to date")
+                            .level(NotificationLevel::Success)
+                            .build(),
+                    );
+                    cx.emit_print_err(AppEvent::SetFfmpegInstallState(
+                        FfmpegInstallState::Installed,
+                    ));
+                    return;
+                }
+            }
+            Err(_) => {
+                cx.emit_print_err(
+                    Error::new()
+                        .code(3)
+                        .title("Dependency ffmpeg Installation Failed")
+                        .severity(ErrorSeverity::Error)
+                        .description("Failed to install ffmpeg due to an unknown error.")
+                        .build(),
+                );
+                cx.emit_print_err(AppEvent::SetFfmpegInstallState(FfmpegInstallState::Failed));
+                return;
+            }
+        };
 
         // Error, ffmpeg should now be installed
         if !ffmpeg_is_installed() {
@@ -289,6 +314,7 @@ fn update_ffmpeg(cx: &mut Context) {
                     .level(NotificationLevel::Error)
                     .build(),
             );
+            cx.emit_print_err(AppEvent::SetFfmpegInstallState(FfmpegInstallState::Missing));
         } else {
             cx.emit_print_err(
                 Notification::new()
@@ -296,21 +322,27 @@ fn update_ffmpeg(cx: &mut Context) {
                     .level(NotificationLevel::Success)
                     .build(),
             );
+            cx.emit_print_err(AppEvent::SetFfmpegInstallState(
+                FfmpegInstallState::Installed,
+            ));
         }
     });
 }
 
 fn install_ffmpeg_footer(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        Button::new(cx, |cx| Label::new(cx, "Download ffmpeg...")).on_press(|_| {
-            if let Err(_) = open::that("https://www.ffmpeg.org/download.html") {
-                eprintln!("Error opening url");
-            }
-        });
-    });
+        Button::new(cx, |cx| Label::new(cx, "Download ffmpeg..."))
+            .on_press(|_| {
+                if let Err(_) = open::that("https://www.ffmpeg.org/download.html") {
+                    eprintln!("Error opening url");
+                }
+            })
+            .width(Stretch(1.0));
+    })
+    .width(Stretch(1.0));
 }
 
-fn update_ffmpeg_inner(cx: &mut ContextProxy) -> Result<(), ()> {
+fn update_ffmpeg_inner(cx: &mut ContextProxy) -> Result<bool, ()> {
     use ffmpeg_sidecar::command::ffmpeg_is_installed;
     use ffmpeg_sidecar::download::{
         check_latest_version, download_ffmpeg_package, ffmpeg_download_url, unpack_ffmpeg,
@@ -329,33 +361,35 @@ fn update_ffmpeg_inner(cx: &mut ContextProxy) -> Result<(), ()> {
                     .level(NotificationLevel::Info)
                     .build(),
             );
+            cx.emit_print_err(AppEvent::SetFfmpegInstallState(
+                FfmpegInstallState::Updating,
+            ));
             let download_url = ffmpeg_download_url().map_err(|_| ())?;
             let destination = sidecar_dir().map_err(|_| ())?;
             let archive_path =
                 download_ffmpeg_package(download_url, &destination).map_err(|_| ())?;
             unpack_ffmpeg(&archive_path, &destination).map_err(|_| ())?;
+            Ok(true)
         } else {
-            cx.emit_print_err(
-                Notification::new()
-                    .message("ffmpeg is already up to date")
-                    .level(NotificationLevel::Info)
-                    .build(),
-            );
+            Ok(false)
         }
     } else {
         cx.emit_print_err(
             Notification::new()
-                .message("Updating ffmpeg...")
+                .message("Installing ffmpeg...")
                 .level(NotificationLevel::Info)
                 .build(),
         );
+        cx.emit_print_err(AppEvent::SetFfmpegInstallState(
+            FfmpegInstallState::Installing,
+        ));
         let download_url = ffmpeg_download_url().map_err(|_| ())?;
         let destination = sidecar_dir().map_err(|_| ())?;
         let archive_path = download_ffmpeg_package(download_url, &destination).map_err(|_| ())?;
         unpack_ffmpeg(&archive_path, &destination).map_err(|_| ())?;
-    }
 
-    Ok(())
+        Ok(true)
+    }
 }
 
 fn main_content(cx: &mut Context) {
@@ -502,6 +536,7 @@ fn video_settings(cx: &mut Context) {
     labelled(cx, AppData::theme, "Youtube Link", |cx| {
         HStack::new(cx, |cx| {
             Textbox::new(cx, AppVideoData::link)
+                .text_overflow(TextOverflow::Ellipsis)
                 .round_box(AppData::theme)
                 .background_color(AppData::theme.map(|theme| theme.background_dark))
                 .color(AppData::theme.map(|theme| theme.text_primary))
@@ -591,7 +626,141 @@ fn video_settings(cx: &mut Context) {
     .height(Pixels(164.0))
     .top(Pixels(6.0));
 
-    labelled(cx, AppData::theme, "Settings", |cx| {}).top(Pixels(6.0));
+    labelled(cx, AppData::theme, "Settings", |cx| {
+        Binding::new(cx, AppVideoData::video, |cx, video| {
+            if video.get(cx).is_some() {
+                video_export_settings(cx);
+            } else {
+                VStack::new(cx, |cx| {
+                    Label::new(cx, "No video selected...")
+                        .color(AppData::theme.map(|theme| theme.text_light))
+                        .font_size("small");
+                })
+                .alignment(Alignment::Center)
+                .size(Stretch(1.0));
+            }
+        });
+    })
+    .gap(Pixels(6.0))
+    .top(Pixels(6.0));
+}
+
+fn video_export_settings(cx: &mut Context) {
+    HStack::new(cx, |cx| {
+        Label::new(cx, "File Name")
+            .font_size("small")
+            .color(AppData::theme.map(|theme| theme.text_secondary));
+
+        Textbox::new(
+            cx,
+            AppVideoData::export_settings.then(VideoExportSettings::title),
+        )
+        .width(Stretch(1.0))
+        .background_color(AppData::theme.map(|theme| theme.background_dark))
+        .color(AppData::theme.map(|theme| theme.text_primary))
+        .round_box(AppData::theme)
+        .on_submit(|ex, state, _| {
+            ex.emit(AppVideoEvent::ExportSettingsEvent(
+                VideoExportSettingsEvent::ChangeTitle(state),
+            ))
+        });
+    })
+    .alignment(Alignment::Center)
+    .height(Auto)
+    .gap(Pixels(6.0));
+
+    HStack::new(cx, |cx| {
+        Label::new(cx, "Format")
+            .font_size("small")
+            .color(AppData::theme.map(|theme| theme.text_secondary));
+
+        ToggleButtonPanel::new(
+            cx,
+            AppData::theme,
+            AppVideoData::export_settings
+                .then(VideoExportSettings::export_type)
+                .map(|es| match es {
+                    ExportType::Audio(_) => false,
+                    ExportType::Video(_) => true,
+                }),
+            |cx| Label::new(cx, "Audio").color(AppData::theme.map(|theme| theme.text_primary)),
+            |cx| Label::new(cx, "Video").color(AppData::theme.map(|theme| theme.text_primary)),
+        )
+        .width(Stretch(2.0))
+        .padding(Pixels(3.0))
+        .round_box(AppData::theme)
+        .background_color(AppData::theme.map(|theme| theme.background_dark))
+        .on_choose(|ex, choice| match choice {
+            ToggleButtonChoice::Left => ex.emit(AppVideoEvent::ExportSettingsEvent(
+                VideoExportSettingsEvent::SetToVideo(false),
+            )),
+            ToggleButtonChoice::Right => ex.emit(AppVideoEvent::ExportSettingsEvent(
+                VideoExportSettingsEvent::SetToVideo(true),
+            )),
+        });
+
+        Dropdown::new(
+            cx,
+            |cx| {
+                Button::new(cx, |cx| {
+                    Label::new(
+                        cx,
+                        AppVideoData::export_settings
+                            .then(VideoExportSettings::export_type)
+                            .map(|export_type| export_type.to_string()),
+                    )
+                    .color(AppData::theme.map(|theme| theme.text_primary))
+                })
+                .round_box(AppData::theme)
+                .background_color(AppData::theme.map(|theme| theme.background_dark));
+            },
+            |cx| {},
+        )
+        .width(Stretch(1.0));
+    })
+    .alignment(Alignment::Center)
+    .height(Auto)
+    .gap(Pixels(6.0));
+
+    Button::new(cx, |cx| {
+        HStack::new(cx, |cx| {
+            Label::new(cx, "Create Task")
+                .color(AppData::theme.map(|theme| theme.primary))
+                .z_index(1)
+                .padding_left(Pixels(4.0))
+                .padding_right(Pixels(4.0))
+                .font_size("large")
+                .font_weight(700);
+
+            HStack::new(cx, |cx| {
+                Svg::new(cx, ICON_SQUARE_ROUNDED_CHEVRONS_RIGHT_FILLED);
+            })
+            .position_type(PositionType::Absolute)
+            .alignment(Alignment::Center)
+            .z_index(3)
+            .size(Percentage(100.0));
+
+            Element::new(cx)
+                .position_type(PositionType::Absolute)
+                .background_color(AppData::theme.map(|theme| theme.background_dark))
+                .class("task-submit-btn-panel")
+                .left(Pixels(0.0))
+                .top(Pixels(0.0))
+                .width(Percentage(100.0))
+                .height(Percentage(100.0))
+                .z_index(2)
+                .corner_radius(Pixels(4.0));
+        })
+        .position_type(PositionType::Relative)
+    })
+    .overflow(Overflow::Hidden)
+    .width(Stretch(1.0))
+    .round_box(AppData::theme)
+    .padding(Pixels(0.0))
+    .top(Pixels(12.0))
+    .background_color(AppData::theme.map(|theme| theme.background_dark))
+    .class("task-submit-btn")
+    .pointer_events(true);
 }
 
 fn playlist_settings(cx: &mut Context) {

@@ -132,15 +132,61 @@ textbox:checked.caret {
 }
 
 .success-svg {
-  fill: #55ff58;
+    fill: #55ff58;
 }
 
 .info-svg {
-  fill: #5590ff;
+    fill: #5590ff;
 }
 
 .thumbnail-img {
     background-size: contain;
     width: 256px;
     height: 144px;
+}
+
+.task-submit-btn .task-submit-btn-panel {
+    opacity: 0;
+    border: 2px transparent solid;
+    transition: border 150ms ease-in-out;
+    transition: opacity 150ms ease-in-out;
+}
+
+.task-submit-btn:hover .task-submit-btn-panel {
+    opacity: 1;
+    border: 2px transparent solid;
+    transition: border 150ms ease-in-out;
+    transition: opacity 150ms ease-in-out;
+}
+
+.task-submit-btn:active .task-submit-btn-panel {
+    border: 1.5px gold solid;
+}
+
+.task-submit-btn svg {
+    fill: gold;
+    opacity: 0;
+    rotate: 270deg;
+    scale: 0.8 0.8;
+    transition: scale 400ms ease-in-out;
+    transition: rotate 400ms ease-in-out;
+    transition: opacity 250ms ease-in-out;
+}
+
+.task-submit-btn:hover svg {
+    opacity: 1;
+    rotate: 360deg;
+    scale: 1 1;
+    transition: scale 400ms ease-in-out;
+    transition: rotate 400ms ease-in-out;
+    transition: opacity 250ms ease-in-out;
+}
+
+.task-submit-btn:active svg {
+    opacity: 1;
+    rotate: 360deg;
+    scale: 0.9 0.9;
+    transition: scale 5ms ease-in-out;
+    transition: rotate 5ms ease-in-out;
+    transition: opacity 5ms ease-in-out;
 }

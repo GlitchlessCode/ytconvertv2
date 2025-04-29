@@ -4,6 +4,7 @@ use super::*;
 use crate::{
     data::task::VideoData,
     error::{Error, ErrorSeverity},
+    helpers::make_filename_valid,
     include_bytes_safe,
     views::all::{Notification, NotificationLevel},
 };
@@ -23,8 +24,138 @@ pub struct AppVideoData {
 
     pub thumbnail_generation: usize,
 
+    pub export_settings: VideoExportSettings,
+
     #[lens(ignore)]
     yt_dlp: PathBuf,
+}
+
+#[derive(Lens, Data, Clone, PartialEq, Debug)]
+pub struct VideoExportSettings {
+    pub title: String,
+
+    pub export_type: ExportType,
+}
+
+impl VideoExportSettings {
+    fn new(title: String) -> Self {
+        Self {
+            title: make_filename_valid(title),
+            export_type: AudioExtension::Mp3.into(),
+        }
+    }
+    fn event(&mut self, _cx: &mut EventContext, event: VideoExportSettingsEvent) {
+        match event {
+            VideoExportSettingsEvent::ChangeTitle(title) => {
+                self.title = make_filename_valid(title);
+            }
+            VideoExportSettingsEvent::SetToVideo(set_to_video) => {
+                if set_to_video {
+                    if self.export_type.is_audio() {
+                        self.export_type = ExportType::Video(VideoExtension::Mp4);
+                    }
+                } else {
+                    if self.export_type.is_video() {
+                        self.export_type = ExportType::Audio(AudioExtension::Mp3);
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub enum VideoExportSettingsEvent {
+    ChangeTitle(String),
+    SetToVideo(bool),
+}
+
+#[derive(Clone, Data, PartialEq, Debug)]
+pub enum ExportType {
+    Audio(AudioExtension),
+    Video(VideoExtension),
+}
+
+impl ExportType {
+    fn is_audio(&self) -> bool {
+        match self {
+            Self::Audio(_) => true,
+            Self::Video(_) => false,
+        }
+    }
+
+    fn is_video(&self) -> bool {
+        match self {
+            Self::Audio(_) => false,
+            Self::Video(_) => true,
+        }
+    }
+}
+
+impl std::fmt::Display for ExportType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Audio(a) => a.to_string(),
+                Self::Video(v) => v.to_string(),
+            }
+        )
+    }
+}
+
+#[derive(Clone, Data, PartialEq, Debug)]
+pub enum AudioExtension {
+    Mp3,
+    Wav,
+    Ogg,
+}
+
+impl std::fmt::Display for AudioExtension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            ".{}",
+            match self {
+                Self::Mp3 => "mp3",
+                Self::Wav => "wav",
+                Self::Ogg => "ogg",
+            }
+        )
+    }
+}
+
+impl From<AudioExtension> for ExportType {
+    fn from(value: AudioExtension) -> Self {
+        ExportType::Audio(value)
+    }
+}
+
+#[derive(Clone, Data, PartialEq, Debug)]
+pub enum VideoExtension {
+    Mp4,
+    Mov,
+    Mkv,
+}
+
+impl std::fmt::Display for VideoExtension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            ".{}",
+            match self {
+                Self::Mp4 => "mp4",
+                Self::Mov => "mov",
+                Self::Mkv => "mkv",
+            }
+        )
+    }
+}
+
+impl From<VideoExtension> for ExportType {
+    fn from(value: VideoExtension) -> Self {
+        ExportType::Video(value)
+    }
 }
 
 impl AppVideoData {
@@ -34,6 +165,7 @@ impl AppVideoData {
             link: String::new(),
             video: None,
             thumbnail_generation: 0,
+            export_settings: VideoExportSettings::new(String::new()),
             yt_dlp,
         }
     }
@@ -79,6 +211,29 @@ impl AppVideoData {
             self.thumbnail_generation += 1;
         }
     }
+
+    fn reset(&mut self, cx: &mut EventContext) {
+        self.link = String::new();
+        self.video = None;
+        self.export_settings = VideoExportSettings::new(String::new());
+
+        if let Err(_) = cx.get_proxy().load_image(
+            "video_thumb".to_string(),
+            LARGE_PLACEHOLDER,
+            ImageRetentionPolicy::Forever,
+        ) {
+            cx.emit(
+                Error::new()
+                    .title("Image Loading Failed")
+                    .code(0)
+                    .severity(ErrorSeverity::Warning)
+                    .description("Failed to load default thumbnail image")
+                    .build(),
+            );
+        }
+
+        self.thumbnail_generation += 1;
+    }
 }
 
 pub enum AppVideoEvent {
@@ -91,6 +246,8 @@ pub enum AppVideoEvent {
 
     FetchThumbnail(String),
     FinishedThumbnailFetch(String, Response),
+
+    ExportSettingsEvent(VideoExportSettingsEvent),
 }
 
 impl Model for AppVideoData {
@@ -101,9 +258,11 @@ impl Model for AppVideoData {
 
                 if !self.link.trim().is_empty() {
                     cx.emit(AppVideoEvent::TryVideoUrl(self.link.trim().to_owned()))
+                } else {
+                    self.reset(cx);
                 }
             }
-            AppVideoEvent::Reset => self.link = String::new(),
+            AppVideoEvent::Reset => self.reset(cx),
             // Try to get video info
             AppVideoEvent::TryVideoUrl(url) => {
                 let yt_dlp = self.yt_dlp.clone();
@@ -118,32 +277,16 @@ impl Model for AppVideoData {
                 );
 
                 if !self.video.same(&None) {
-                    self.video = None;
-
-                    if let Err(_) = cx.get_proxy().load_image(
-                        "video_thumb".to_string(),
-                        LARGE_PLACEHOLDER,
-                        ImageRetentionPolicy::Forever,
-                    ) {
-                        cx.emit(
-                            Error::new()
-                                .title("Image Loading Failed")
-                                .code(0)
-                                .severity(ErrorSeverity::Warning)
-                                .description("Failed to load default thumbnail image")
-                                .build(),
-                        );
-                    }
-
-                    self.thumbnail_generation += 1;
+                    self.reset(cx);
                 }
             }
             AppVideoEvent::UrlSucceeded(data) => {
                 let thumbnail = data.thumbnail().to_owned();
-                let wrapped = Some(data);
+                let wrapped = Some(data.clone());
                 if !self.video.same(&wrapped) {
                     cx.emit(AppVideoEvent::FetchThumbnail(thumbnail));
                     self.video = wrapped;
+                    self.export_settings = VideoExportSettings::new(data.title().clone());
                 }
             }
 
@@ -156,6 +299,8 @@ impl Model for AppVideoData {
             AppVideoEvent::FinishedThumbnailFetch(link, res) => {
                 self.finalize_thumbnail_fetch(cx, link, res)
             }
+
+            AppVideoEvent::ExportSettingsEvent(event) => self.export_settings.event(cx, event),
         });
     }
 }

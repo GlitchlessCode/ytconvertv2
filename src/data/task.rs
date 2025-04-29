@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use vizia::prelude::*;
 use youtube_dl::SingleVideo;
 
+use crate::models::video::VideoExportSettings;
+
 #[derive(Debug, Data, Clone)]
 pub struct Task {
     export_location: PathBuf,
@@ -12,11 +14,11 @@ pub struct Task {
 impl Task {
     /// Create a new Video task
     ///
-    /// `location` and `url` must both be valid
-    pub fn video(location: PathBuf, data: VideoData) -> Self {
+    /// `location` must be valid
+    pub fn video(location: PathBuf, data: VideoData, settings: VideoExportSettings) -> Self {
         Self {
             export_location: location,
-            data: TaskData::Video(data),
+            data: TaskData::Video(data, settings),
         }
     }
 
@@ -59,7 +61,7 @@ impl Task {
 
 #[derive(Debug, Data, Clone)]
 pub enum TaskData {
-    Video(VideoData),
+    Video(VideoData, VideoExportSettings),
     Playlist(PlaylistData),
 }
 

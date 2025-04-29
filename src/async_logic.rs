@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 
-use tokio::sync::{
-    mpsc,
-    oneshot::{Receiver, Sender},
-};
+use tokio::sync::{mpsc, oneshot::Sender};
 use youtube_dl::Error;
 
 pub async fn run_event_loop(mut rx: mpsc::UnboundedReceiver<AsyncAppEvent>) {
