@@ -6,8 +6,18 @@ pub struct TaskQueue {
 }
 
 impl TaskQueue {
-    pub fn add(&mut self, task: Task) {
-        self.tasks.push(task);
+    pub fn push(&mut self, task: Task) {
+        self.tasks.insert(0, task);
+    }
+
+    pub fn pull(&mut self) -> Option<Task> {
+        self.tasks.pop()
+    }
+
+    pub fn remove(&mut self, index: usize) {
+        if self.tasks.get(index).is_some() {
+            self.tasks.remove(index);
+        }
     }
 }
 

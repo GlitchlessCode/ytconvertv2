@@ -18,6 +18,7 @@ pub struct AppVideoData {
     #[lens(ignore)]
     client: Client,
 
+    pub searching: bool,
     pub link: String,
 
     pub video: Option<VideoData>,
@@ -44,6 +45,7 @@ impl VideoExportSettings {
             export_type: AudioExtension::Mp3.into(),
         }
     }
+
     fn event(&mut self, _cx: &mut EventContext, event: VideoExportSettingsEvent) {
         match event {
             VideoExportSettingsEvent::ChangeTitle(title) => {
@@ -60,6 +62,13 @@ impl VideoExportSettings {
                     }
                 }
             }
+            VideoExportSettingsEvent::SetExtension(extension) => {
+                if (extension.is_audio() && self.export_type.is_audio())
+                    || (extension.is_video() && self.export_type.is_video())
+                {
+                    self.export_type = extension;
+                }
+            }
         }
     }
 }
@@ -67,6 +76,7 @@ impl VideoExportSettings {
 pub enum VideoExportSettingsEvent {
     ChangeTitle(String),
     SetToVideo(bool),
+    SetExtension(ExportType),
 }
 
 #[derive(Clone, Data, PartialEq, Debug)]
@@ -87,6 +97,21 @@ impl ExportType {
         match self {
             Self::Audio(_) => false,
             Self::Video(_) => true,
+        }
+    }
+
+    pub fn formats(&self) -> Vec<ExportType> {
+        match self {
+            Self::Audio(_) => vec![
+                AudioExtension::Mp3.into(),
+                AudioExtension::Wav.into(),
+                AudioExtension::Ogg.into(),
+            ],
+            Self::Video(_) => vec![
+                VideoExtension::Mp4.into(),
+                VideoExtension::Mov.into(),
+                VideoExtension::Mkv.into(),
+            ],
         }
     }
 }
@@ -162,6 +187,7 @@ impl AppVideoData {
     pub fn new(yt_dlp: PathBuf) -> Self {
         Self {
             client: Client::new(),
+            searching: false,
             link: String::new(),
             video: None,
             thumbnail_generation: 0,
@@ -242,7 +268,7 @@ pub enum AppVideoEvent {
 
     TryVideoUrl(String),
     UrlFailed,
-    UrlSucceeded(VideoData),
+    UrlSucceeded(VideoData, String),
 
     FetchThumbnail(String),
     FinishedThumbnailFetch(String, Response),
@@ -254,21 +280,25 @@ impl Model for AppVideoData {
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
         event.take(|event, _meta| match event {
             AppVideoEvent::LinkSubmit(text) => {
-                self.link = text;
+                if self.link != text {
+                    self.link = text;
 
-                if !self.link.trim().is_empty() {
-                    cx.emit(AppVideoEvent::TryVideoUrl(self.link.trim().to_owned()))
-                } else {
-                    self.reset(cx);
+                    if !self.link.trim().is_empty() {
+                        cx.emit(AppVideoEvent::TryVideoUrl(self.link.trim().to_owned()))
+                    } else {
+                        self.reset(cx);
+                    }
                 }
             }
             AppVideoEvent::Reset => self.reset(cx),
             // Try to get video info
             AppVideoEvent::TryVideoUrl(url) => {
+                self.searching = true;
                 let yt_dlp = self.yt_dlp.clone();
                 cx.spawn(|cx| fetch_video_data(cx, url, yt_dlp))
             }
             AppVideoEvent::UrlFailed => {
+                self.searching = false;
                 cx.emit(
                     Notification::new()
                         .message("Invalid URL, please try again")
@@ -280,13 +310,16 @@ impl Model for AppVideoData {
                     self.reset(cx);
                 }
             }
-            AppVideoEvent::UrlSucceeded(data) => {
-                let thumbnail = data.thumbnail().to_owned();
-                let wrapped = Some(data.clone());
-                if !self.video.same(&wrapped) {
-                    cx.emit(AppVideoEvent::FetchThumbnail(thumbnail));
-                    self.video = wrapped;
-                    self.export_settings = VideoExportSettings::new(data.title().clone());
+            AppVideoEvent::UrlSucceeded(data, url) => {
+                self.searching = false;
+                if self.link == url {
+                    let thumbnail = data.thumbnail().to_owned();
+                    let wrapped = Some(data.clone());
+                    if !self.video.same(&wrapped) {
+                        cx.emit(AppVideoEvent::FetchThumbnail(thumbnail));
+                        self.video = wrapped;
+                        self.export_settings = VideoExportSettings::new(data.title().clone());
+                    }
                 }
             }
 
@@ -306,7 +339,7 @@ impl Model for AppVideoData {
 }
 
 fn fetch_video_data(cx: &mut ContextProxy, url: String, yt_dlp: PathBuf) {
-    let event = YoutubeDl::new(url)
+    let event = YoutubeDl::new(&url)
         .youtube_dl_path(yt_dlp)
         .flat_playlist(true)
         .extra_arg("--skip-download")
@@ -322,7 +355,7 @@ fn fetch_video_data(cx: &mut ContextProxy, url: String, yt_dlp: PathBuf) {
         .and_then(|video| VideoData::try_from(*video).ok());
 
     let event = match event {
-        Some(data) => AppVideoEvent::UrlSucceeded(data),
+        Some(data) => AppVideoEvent::UrlSucceeded(data, url),
         None => AppVideoEvent::UrlFailed,
     };
 

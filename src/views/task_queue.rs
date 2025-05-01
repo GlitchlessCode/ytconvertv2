@@ -1,5 +1,13 @@
+use std::path::PathBuf;
+
+use vizia::icons::ICON_TRASH;
+
 use crate::{
-    data::{Task, TaskQueue},
+    data::{
+        task::{PlaylistData, TaskData, VideoData},
+        Task, TaskQueue,
+    },
+    models::video::VideoExportSettings,
     modifiers::ViewModifiers,
 };
 
@@ -26,8 +34,8 @@ impl TaskQueueView {
                     List::new(
                         cx,
                         task_queue.then(TaskQueue::tasks),
-                        move |cx, _task_queue, task| {
-                            TaskView::new(cx, theme, task.get(cx));
+                        move |cx, idx, task| {
+                            TaskView::new(cx, theme, task, idx);
                         },
                     )
                     .padding_top(Pixels(6.0));
@@ -46,17 +54,97 @@ impl View for TaskQueueView {
 pub struct TaskView {}
 
 impl TaskView {
-    pub fn new<T>(cx: &mut Context, theme: T, task: Task) -> Handle<Self>
+    pub fn new<T, L>(cx: &mut Context, theme: T, task: L, index: usize) -> Handle<Self>
     where
         T: Lens<Target = Theme>,
+        L: Lens<Target = Task>,
     {
         Self {}
             .build(cx, |cx| {
-                Element::new(cx).round_box(theme);
+                let task = task.get(cx);
+                match task.data() {
+                    TaskData::Video(data, settings) => {
+                        show_video_details(cx, theme, data, settings, task.location(), index)
+                    }
+                    TaskData::Playlist(data) => {
+                        show_playlist_details(cx, theme, data, task.location(), index)
+                    }
+                }
             })
-            .padding(Pixels(6.0))
+            .padding(Pixels(3.0))
             .padding_top(Pixels(0.0))
+            .height(Pixels(75.0))
     }
+}
+
+fn show_video_details<T: Lens<Target = Theme>>(
+    cx: &mut Context,
+    theme: T,
+    data: &VideoData,
+    settings: &VideoExportSettings,
+    location: &PathBuf,
+    index: usize,
+) {
+    HStack::new(cx, |cx| {
+        Label::new(cx, settings.export_type.to_string())
+            .color(theme.map(|theme| theme.text_primary))
+            .font_size("x-small")
+            .padding(Pixels(10.0));
+
+        VStack::new(cx, |cx| {
+            Label::new(cx, &settings.title)
+                .color(theme.map(|theme| theme.primary))
+                .font_size("small")
+                .width(Stretch(1.0))
+                .text_wrap(false)
+                .text_overflow(TextOverflow::Ellipsis);
+            Label::new(cx, data.title())
+                .color(theme.map(|theme| theme.text_primary))
+                .font_size("x-small")
+                .width(Stretch(1.0))
+                .text_wrap(false)
+                .text_overflow(TextOverflow::Ellipsis);
+            Label::new(cx, data.author())
+                .color(theme.map(|theme| theme.text_secondary))
+                .font_size("x-small")
+                .width(Stretch(1.0))
+                .text_wrap(false)
+                .text_overflow(TextOverflow::Ellipsis);
+
+            Spacer::new(cx);
+
+            Label::new(cx, location.display().to_string())
+                .color(theme.map(|theme| theme.text_light))
+                .font_size("x-small")
+                .width(Stretch(1.0))
+                .text_wrap(false)
+                .text_overflow(TextOverflow::Ellipsis);
+        });
+
+        Button::new(cx, |cx| Svg::new(cx, ICON_TRASH).fill("#ff0000"))
+            .round_box(theme)
+            .background_color("##ff64644d")
+            .on_press(move |ex| ex.emit(TaskEvent::Remove(index)));
+    })
+    .gap(Pixels(6.0))
+    .alignment(Alignment::Center)
+    .padding(Pixels(3.0))
+    .overflow(Overflow::Hidden)
+    .background_color(theme.map(|theme| theme.background_dark))
+    .round_box(theme);
+}
+
+pub enum TaskEvent {
+    Remove(usize),
+}
+
+fn show_playlist_details<T: Lens<Target = Theme>>(
+    cx: &mut Context,
+    theme: T,
+    data: &PlaylistData,
+    location: &PathBuf,
+    index: usize,
+) {
 }
 
 impl View for TaskView {

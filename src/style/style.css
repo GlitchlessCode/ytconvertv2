@@ -59,11 +59,11 @@ button.std-btn:active {
 }
 
 .toolbar button.exit svg {
-    fill: red;
+    fill: #ff0000;
 }
 
 .toolbar button.exit {
-    background-color: rgba(255, 100, 100, 0.3);
+    background-color: #ff64644d;
     corner-radius: 3px;
     height: 80%;
     padding-left: 2px;
@@ -164,9 +164,8 @@ textbox:checked.caret {
 }
 
 .task-submit-btn svg {
-    fill: gold;
     opacity: 0;
-    rotate: 270deg;
+    rotate: 300deg;
     scale: 0.8 0.8;
     transition: scale 400ms ease-in-out;
     transition: rotate 400ms ease-in-out;
@@ -189,4 +188,16 @@ textbox:checked.caret {
     transition: scale 5ms ease-in-out;
     transition: rotate 5ms ease-in-out;
     transition: opacity 5ms ease-in-out;
+}
+
+.dropdown-btn {
+    background-color: transparent;
+}
+
+.dropdown-btn:hover {
+    background-color: #44444422;
+}
+
+.dropdown-btn:active {
+    background-color: #44444444;
 }

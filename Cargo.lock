@@ -600,9 +600,9 @@ checksum = "1628fb46dfa0b37568d12e5edd512553eccf6a22a78e8bde00bb4aed84d5bdbf"
 
 [[package]]
 name = "bytemuck"
-version = "1.22.0"
+version = "1.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6b1fc10dbac614ebc03540c9dbd60e83887fda27794998c6528f1782047d540"
+checksum = "9134a6ef01ce4b366b50689c94f82c14bc72bc5d0386829828a2e2752ef7958c"
 
 [[package]]
 name = "byteorder"
@@ -719,9 +719,9 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.40"
+version = "0.4.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a7964611d71df112cb1730f2ee67324fcf4d0fc6606acbbe9bfe06df124637c"
+checksum = "c469d952047f47f91b68d1cba3f10d63c11d73e4636f24f08daf0278abf01c4d"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
@@ -1527,22 +1527,22 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "glutin"
-version = "0.32.2"
+version = "0.32.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03642b8b0cce622392deb0ee3e88511f75df2daac806102597905c3ea1974848"
+checksum = "12124de845cacfebedff80e877bb37b5b75c34c5a4c89e47e1cdd67fb6041325"
 dependencies = [
  "bitflags 2.9.0",
  "cfg_aliases",
  "cgl",
- "core-foundation",
- "dispatch",
+ "dispatch2 0.3.0",
  "glutin_egl_sys",
  "glutin_glx_sys",
  "glutin_wgl_sys",
  "libloading",
- "objc2 0.5.2",
- "objc2-app-kit 0.2.2",
- "objc2-foundation 0.2.2",
+ "objc2 0.6.1",
+ "objc2-app-kit 0.3.1",
+ "objc2-core-foundation",
+ "objc2-foundation 0.3.1",
  "once_cell",
  "raw-window-handle",
  "wayland-sys",
@@ -2404,6 +2404,7 @@ dependencies = [
  "bitflags 2.9.0",
  "block2 0.6.1",
  "objc2 0.6.1",
+ "objc2-core-foundation",
  "objc2-foundation 0.3.1",
 ]
 
@@ -3651,9 +3652,9 @@ dependencies = [
 
 [[package]]
 name = "synstructure"
-version = "0.13.1"
+version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8af7666ab7b6390ab78131fb5b0fce11d6b7a6951602017c35fa82800708971"
+checksum = "728a70f3dbaf5bab7f0c4b1ac8d7ae5ea60a4b5549c8a5914361c99147a709d2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4161,7 +4162,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vizia"
 version = "0.3.0"
-source = "git+https://github.com/vizia/vizia#8f4e6aa15a3506d4c1a7f16b5d2e42520d9b8904"
+source = "git+https://github.com/vizia/vizia#ca4c919d696e638d37ddcffc627bd97e1053ab25"
 dependencies = [
  "vizia_core",
  "vizia_winit",
@@ -4170,7 +4171,7 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.3.0"
-source = "git+https://github.com/vizia/vizia#8f4e6aa15a3506d4c1a7f16b5d2e42520d9b8904"
+source = "git+https://github.com/vizia/vizia#ca4c919d696e638d37ddcffc627bd97e1053ab25"
 dependencies = [
  "accesskit",
  "bitflags 2.9.0",
@@ -4202,7 +4203,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.3.0"
-source = "git+https://github.com/vizia/vizia#8f4e6aa15a3506d4c1a7f16b5d2e42520d9b8904"
+source = "git+https://github.com/vizia/vizia#ca4c919d696e638d37ddcffc627bd97e1053ab25"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4212,12 +4213,12 @@ dependencies = [
 [[package]]
 name = "vizia_id"
 version = "0.3.0"
-source = "git+https://github.com/vizia/vizia#8f4e6aa15a3506d4c1a7f16b5d2e42520d9b8904"
+source = "git+https://github.com/vizia/vizia#ca4c919d696e638d37ddcffc627bd97e1053ab25"
 
 [[package]]
 name = "vizia_input"
 version = "0.3.0"
-source = "git+https://github.com/vizia/vizia#8f4e6aa15a3506d4c1a7f16b5d2e42520d9b8904"
+source = "git+https://github.com/vizia/vizia#ca4c919d696e638d37ddcffc627bd97e1053ab25"
 dependencies = [
  "bitflags 2.9.0",
  "keyboard-types",
@@ -4227,7 +4228,7 @@ dependencies = [
 [[package]]
 name = "vizia_storage"
 version = "0.3.0"
-source = "git+https://github.com/vizia/vizia#8f4e6aa15a3506d4c1a7f16b5d2e42520d9b8904"
+source = "git+https://github.com/vizia/vizia#ca4c919d696e638d37ddcffc627bd97e1053ab25"
 dependencies = [
  "vizia_id",
 ]
@@ -4235,7 +4236,7 @@ dependencies = [
 [[package]]
 name = "vizia_style"
 version = "0.3.0"
-source = "git+https://github.com/vizia/vizia#8f4e6aa15a3506d4c1a7f16b5d2e42520d9b8904"
+source = "git+https://github.com/vizia/vizia#ca4c919d696e638d37ddcffc627bd97e1053ab25"
 dependencies = [
  "bitflags 2.9.0",
  "cssparser",
@@ -4250,7 +4251,7 @@ dependencies = [
 [[package]]
 name = "vizia_window"
 version = "0.3.0"
-source = "git+https://github.com/vizia/vizia#8f4e6aa15a3506d4c1a7f16b5d2e42520d9b8904"
+source = "git+https://github.com/vizia/vizia#ca4c919d696e638d37ddcffc627bd97e1053ab25"
 dependencies = [
  "bitflags 2.9.0",
  "vizia_input",
@@ -4259,7 +4260,7 @@ dependencies = [
 [[package]]
 name = "vizia_winit"
 version = "0.3.0"
-source = "git+https://github.com/vizia/vizia#8f4e6aa15a3506d4c1a7f16b5d2e42520d9b8904"
+source = "git+https://github.com/vizia/vizia#ca4c919d696e638d37ddcffc627bd97e1053ab25"
 dependencies = [
  "accesskit",
  "accesskit_winit",
@@ -4394,9 +4395,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-backend"
-version = "0.3.9"
+version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2bea670be0e24795f39416e5461ccef0185b47df2749ed2b226b8a7557ac871"
+checksum = "fe770181423e5fc79d3e2a7f4410b7799d5aab1de4372853de3c6aa13ca24121"
 dependencies = [
  "cc",
  "downcast-rs",
@@ -4408,9 +4409,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-client"
-version = "0.31.9"
+version = "0.31.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5029b0ff4f7be961c326169ee8e247d534d8507dbe390cac6aa3d2cc7c268825"
+checksum = "978fa7c67b0847dbd6a9f350ca2569174974cd4082737054dbb7fbb79d7d9a61"
 dependencies = [
  "bitflags 2.9.0",
  "rustix 0.38.44",
@@ -4431,9 +4432,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-cursor"
-version = "0.31.9"
+version = "0.31.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28d6ec438d7c38bde05a10e80c3e3a1212d85f941be9fc9f80c86e6f5f498252"
+checksum = "a65317158dec28d00416cb16705934070aef4f8393353d41126c54264ae0f182"
 dependencies = [
  "rustix 0.38.44",
  "wayland-client",
@@ -4442,9 +4443,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-protocols"
-version = "0.32.7"
+version = "0.32.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba8de1f9dda5e589d08848af3ad4cd694bbfd059c3eb3c6d89c7120e8c0efa71"
+checksum = "779075454e1e9a521794fed15886323ea0feda3f8b0fc1390f5398141310422a"
 dependencies = [
  "bitflags 2.9.0",
  "wayland-backend",
@@ -4454,9 +4455,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-protocols-plasma"
-version = "0.3.7"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87e10c27e3290310d7e0d3221bc4e945d9b296b249577af2eb595726b546a3f8"
+checksum = "4fd38cdad69b56ace413c6bcc1fbf5acc5e2ef4af9d5f8f1f9570c0c83eae175"
 dependencies = [
  "bitflags 2.9.0",
  "wayland-backend",
@@ -4467,9 +4468,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-protocols-wlr"
-version = "0.3.7"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f3334ee752fbe3c228adfda339a9e7a03e0ba65a78806d8d464b69928cf4ef2"
+checksum = "1cb6cdc73399c0e06504c437fe3cf886f25568dd5454473d565085b36d6a8bbf"
 dependencies = [
  "bitflags 2.9.0",
  "wayland-backend",
@@ -4523,9 +4524,9 @@ dependencies = [
 
 [[package]]
 name = "webpki-roots"
-version = "0.26.9"
+version = "0.26.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29aad86cec885cafd03e8305fd727c418e970a521322c91688414d5b8efba16b"
+checksum = "37493cadf42a2a939ed404698ded7fb378bf301b5011f973361779a3a74f8c93"
 dependencies = [
  "rustls-pki-types",
 ]
@@ -4975,9 +4976,9 @@ checksum = "271414315aff87387382ec3d271b52d7ae78726f5d44ac98b4f4030c91880486"
 
 [[package]]
 name = "winit"
-version = "0.30.9"
+version = "0.30.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a809eacf18c8eca8b6635091543f02a5a06ddf3dad846398795460e6e0ae3cc0"
+checksum = "b0d05bd8908e14618c9609471db04007e644fd9cce6529756046cfc577f9155e"
 dependencies = [
  "ahash",
  "android-activity",

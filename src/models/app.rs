@@ -1,5 +1,9 @@
 use super::*;
-use crate::{config::ConfigEvent, data::TaskQueue};
+use crate::{
+    config::ConfigEvent,
+    data::{Task, TaskQueue},
+    views::task_queue::TaskEvent,
+};
 use rfd::FileDialog;
 use std::path::PathBuf;
 
@@ -47,6 +51,10 @@ impl Model for AppData {
                 self.ffmpeg_install_state = state.clone();
             }
 
+            AppEvent::SubmitTask(task) => {
+                self.task_queue.push(task.clone());
+            }
+
             AppEvent::ToggleVideo => {
                 self.playlist_selected = false;
             }
@@ -57,6 +65,10 @@ impl Model for AppData {
 
             #[allow(unreachable_patterns)]
             _ => (),
+        });
+
+        event.map(|event, _meta| match event {
+            TaskEvent::Remove(index) => self.task_queue.remove(*index),
         });
 
         event.map(|event, _meta| match event {
@@ -80,6 +92,10 @@ pub enum AppEvent {
 
     // Ffmpeg install
     SetFfmpegInstallState(FfmpegInstallState),
+
+    // Submit Task
+    SubmitTask(Task),
+    RemoveTask(usize),
 
     // Toggle button
     ToggleVideo,

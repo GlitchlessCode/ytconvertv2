@@ -9,7 +9,7 @@ use vizia::{
 use ytconvertv2::{
     async_logic::{run_event_loop, AsyncAppEvent},
     config::{ConfigEvent, ConfigModel},
-    data::TaskQueue,
+    data::{Task, TaskQueue},
     error::{error_popup, Error, ErrorManager, ErrorSeverity},
     helpers::{format_seconds, labelled, ContextProxyExt},
     include_bytes_safe,
@@ -454,7 +454,7 @@ fn main_content(cx: &mut Context) {
             .background_color(AppData::theme.map(|theme| theme.background_light));
         })
         .gap(Pixels(6.0))
-        .width(Pixels(290.0));
+        .width(Pixels(320.0));
     })
     .gap(Pixels(6.0));
 }
@@ -503,7 +503,13 @@ fn draw_export_settings(cx: &mut Context) {
                 .keyframe(1.0, |kf| kf.opacity(1.0).scale((1.0, 1.0))),
         );
 
-        AppVideoData::new(AppData::yt_dlp_path.get(cx).join("yt-dlp.exe")).build(cx);
+        let executable = if cfg!(windows) {
+            "yt-dlp.exe"
+        } else {
+            "yt-dlp"
+        };
+
+        AppVideoData::new(AppData::yt_dlp_path.get(cx).join(executable)).build(cx);
 
         AnimatedBinding::new(cx, AppData::playlist_selected, |cx, pl_selected| {
             VStack::new(cx, move |cx| {
@@ -536,14 +542,19 @@ fn video_settings(cx: &mut Context) {
     labelled(cx, AppData::theme, "Youtube Link", |cx| {
         HStack::new(cx, |cx| {
             Textbox::new(cx, AppVideoData::link)
+                .disabled(AppVideoData::searching)
                 .text_overflow(TextOverflow::Ellipsis)
                 .round_box(AppData::theme)
                 .background_color(AppData::theme.map(|theme| theme.background_dark))
                 .color(AppData::theme.map(|theme| theme.text_primary))
                 .width(Stretch(1.0))
-                .on_submit(move |ex, text, _| ex.emit(AppVideoEvent::LinkSubmit(text)));
+                .on_submit(move |ex, text, _| {
+                    ex.emit(AppVideoEvent::LinkSubmit(text));
+                    ex.focus_next();
+                });
 
             Button::new(cx, |cx| Svg::new(cx, ICON_RELOAD))
+                .disabled(AppVideoData::searching)
                 .class("std-btn")
                 .on_press(|ex| ex.emit(AppVideoEvent::Reset));
         })
@@ -655,6 +666,8 @@ fn video_export_settings(cx: &mut Context) {
             cx,
             AppVideoData::export_settings.then(VideoExportSettings::title),
         )
+        .text_wrap(false)
+        .text_overflow(TextOverflow::Ellipsis)
         .width(Stretch(1.0))
         .background_color(AppData::theme.map(|theme| theme.background_dark))
         .color(AppData::theme.map(|theme| theme.text_primary))
@@ -712,9 +725,28 @@ fn video_export_settings(cx: &mut Context) {
                     .color(AppData::theme.map(|theme| theme.text_primary))
                 })
                 .round_box(AppData::theme)
-                .background_color(AppData::theme.map(|theme| theme.background_dark));
+                .background_color(AppData::theme.map(|theme| theme.background_dark))
+                .on_press(|ex| ex.emit(PopupEvent::Open));
             },
-            |cx| {},
+            |cx| {
+                let export_type = AppVideoData::export_settings
+                    .then(VideoExportSettings::export_type)
+                    .get(cx);
+
+                for extension in export_type.formats() {
+                    Label::new(cx, extension.to_string())
+                        .padding(Pixels(6.0))
+                        .class("dropdown-btn")
+                        .cursor(CursorIcon::Hand)
+                        .width(Stretch(1.0))
+                        .on_press(move |ex| {
+                            ex.emit(AppVideoEvent::ExportSettingsEvent(
+                                VideoExportSettingsEvent::SetExtension(extension.clone()),
+                            ));
+                            ex.emit(PopupEvent::Close);
+                        });
+                }
+            },
         )
         .width(Stretch(1.0));
     })
@@ -733,7 +765,8 @@ fn video_export_settings(cx: &mut Context) {
                 .font_weight(700);
 
             HStack::new(cx, |cx| {
-                Svg::new(cx, ICON_SQUARE_ROUNDED_CHEVRONS_RIGHT_FILLED);
+                Svg::new(cx, ICON_SQUARE_ROUNDED_CHEVRONS_RIGHT_FILLED)
+                    .fill(AppData::theme.map(|theme| theme.primary));
             })
             .position_type(PositionType::Absolute)
             .alignment(Alignment::Center)
@@ -751,6 +784,7 @@ fn video_export_settings(cx: &mut Context) {
                 .z_index(2)
                 .corner_radius(Pixels(4.0));
         })
+        .width(Stretch(1.0))
         .position_type(PositionType::Relative)
     })
     .overflow(Overflow::Hidden)
@@ -760,7 +794,45 @@ fn video_export_settings(cx: &mut Context) {
     .top(Pixels(12.0))
     .background_color(AppData::theme.map(|theme| theme.background_dark))
     .class("task-submit-btn")
-    .pointer_events(true);
+    .pointer_events(true)
+    .on_press(|ex| {
+        let location = AppData::current_location.get(ex);
+        let data = AppVideoData::video.get(ex);
+        let settings = AppVideoData::export_settings.get(ex);
+        match (location, data) {
+            (Some(location), Some(data)) => {
+                ex.emit(AppEvent::SubmitTask(Task::video(location, data, settings)));
+                ex.emit(
+                    Notification::new()
+                        .message("Task Created Successfully")
+                        .level(NotificationLevel::Success)
+                        .build(),
+                )
+            }
+            (location, data) => {
+                if location.is_none() {
+                    ex.emit(
+                        Error::new()
+                            .code(5)
+                            .title("Export Location Unexpectedly None")
+                            .severity(ErrorSeverity::Error)
+                            .build(),
+                    );
+                }
+                if data.is_none() {
+                    ex.emit(
+                        Error::new()
+                            .code(6)
+                            .title("Video Data Unexpectedly None")
+                            .severity(ErrorSeverity::Error)
+                            .build(),
+                    );
+                }
+            }
+        }
+
+        ex.emit(AppVideoEvent::Reset);
+    });
 }
 
 fn playlist_settings(cx: &mut Context) {
