@@ -139,3 +139,35 @@ impl PlaylistData {
         self.videos.iter()
     }
 }
+
+#[derive(Debug, Data, Clone)]
+pub enum ActiveTask {
+    Video {
+        data: VideoData,
+        settings: VideoExportSettings,
+        progress: f32,
+    },
+    Playlist {
+        data: PlaylistData,
+        // settings:
+        video_progress: f32,
+        playlist_progress: f32,
+    },
+}
+
+impl ActiveTask {
+    pub fn new(base: Task) -> Self {
+        match base.data {
+            TaskData::Video(data, settings) => Self::Video {
+                data,
+                settings,
+                progress: 0.0,
+            },
+            TaskData::Playlist(data) => Self::Playlist {
+                data,
+                video_progress: 0.0,
+                playlist_progress: 0.0,
+            },
+        }
+    }
+}

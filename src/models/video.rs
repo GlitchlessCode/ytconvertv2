@@ -86,14 +86,14 @@ pub enum ExportType {
 }
 
 impl ExportType {
-    fn is_audio(&self) -> bool {
+    pub fn is_audio(&self) -> bool {
         match self {
             Self::Audio(_) => true,
             Self::Video(_) => false,
         }
     }
 
-    fn is_video(&self) -> bool {
+    pub fn is_video(&self) -> bool {
         match self {
             Self::Audio(_) => false,
             Self::Video(_) => true,
@@ -406,7 +406,7 @@ fn fetch_thumbnail(cx: &mut ContextProxy, client: Client, url: String) {
     if let Err(_) = cx.emit(AppVideoEvent::FinishedThumbnailFetch(url, res)) {
         let error = Error::new()
             .title("Event Emission Failure")
-            .code(100)
+            .code(3)
             .description("Failed to emit an error to the context proxy while submitting an AppVideoEvent::FinishedThumbnailFetch event")
             .severity(ErrorSeverity::Warning)
             .build();

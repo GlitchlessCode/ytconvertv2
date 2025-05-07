@@ -1,8 +1,14 @@
-use super::*;
+use super::{video::VideoExportSettings, *};
 use crate::{
     config::ConfigEvent,
-    data::{Task, TaskQueue},
-    views::task_queue::TaskEvent,
+    data::{
+        task::{PlaylistData, TaskData, VideoData},
+        ActiveTask, Task, TaskQueue,
+    },
+    error::{Error, ErrorSeverity},
+    export::video::{Unused, VideoExporter},
+    helpers::ContextProxyExt,
+    views::{all::*, task_queue::TaskEvent},
 };
 use rfd::FileDialog;
 use std::path::PathBuf;
@@ -11,6 +17,7 @@ use std::path::PathBuf;
 pub struct AppData {
     pub theme: Theme,
     pub task_queue: TaskQueue,
+    pub active_task: Option<ActiveTask>,
 
     pub playlist_selected: bool,
 
@@ -52,7 +59,11 @@ impl Model for AppData {
             }
 
             AppEvent::SubmitTask(task) => {
-                self.task_queue.push(task.clone());
+                if self.active_task.is_some() {
+                    self.task_queue.push(task.clone());
+                } else {
+                    cx.emit(TaskEvent::SetActive(task.clone()))
+                }
             }
 
             AppEvent::ToggleVideo => {
@@ -67,8 +78,52 @@ impl Model for AppData {
             _ => (),
         });
 
-        event.map(|event, _meta| match event {
-            TaskEvent::Remove(index) => self.task_queue.remove(*index),
+        event.take(|event, _meta| match event {
+            TaskEvent::Remove(index) => self.task_queue.remove(index),
+            TaskEvent::SetActive(task) => {
+                if self.ffmpeg_install_state == FfmpegInstallState::Installed {
+                    self.active_task = Some(ActiveTask::new(task.clone()));
+                    let yt_dlp_path = self.yt_dlp_path.clone();
+                    cx.spawn(|cx| handle_task(cx, task, yt_dlp_path));
+                } else if self.ffmpeg_install_state == FfmpegInstallState::Installing
+                    || self.ffmpeg_install_state == FfmpegInstallState::Updating
+                {
+                    cx.emit(
+                        Notification::new()
+                            .message("Please wait for ffmpeg to install")
+                            .level(NotificationLevel::Warning)
+                            .build(),
+                    );
+                    cx.emit(
+                        Error::new()
+                            .title("Installing ffmpeg Warning")
+                            .code(6)
+                            .severity(ErrorSeverity::Warning)
+                            .description("ffmpeg is still installing, please wait.")
+                            .build(),
+                    );
+                } else {
+                    cx.emit(
+                        Notification::new()
+                            .message("ffmpeg could not be found")
+                            .level(NotificationLevel::Error)
+                            .build(),
+                    );
+                    cx.emit(
+                        Error::new()
+                            .title("No Installation of ffmpeg")
+                            .code(7)
+                            .severity(ErrorSeverity::Error)
+                            .description("Previously failed to install ffmpeg, cannot be used.")
+                            .build(),
+                    );
+                }
+            }
+            TaskEvent::UpdateActive(active_task) => {
+                if let Some(ref mut task) = self.active_task {
+                    *task = active_task;
+                }
+            }
         });
 
         event.map(|event, _meta| match event {
@@ -102,7 +157,7 @@ pub enum AppEvent {
     TogglePlaylist,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum FfmpegInstallState {
     Installed,
     Installing,
@@ -111,4 +166,57 @@ pub enum FfmpegInstallState {
     Failed,
     Missing,
     Unknown,
+}
+
+impl std::fmt::Display for FfmpegInstallState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Installed => "Installed",
+                Self::Installing => "Installing",
+                Self::Updating => "Updating",
+
+                Self::Failed => "Failed",
+                Self::Missing => "Missing",
+                Self::Unknown => "Unknown",
+            }
+        )
+    }
+}
+
+fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf) {
+    let export_location = task.location();
+    match task.data() {
+        TaskData::Video(data, settings) => {
+            let exporter = VideoExporter::builder()
+                .export_location(export_location.to_owned())
+                .data(data.to_owned())
+                .settings(settings.to_owned())
+                .yt_dlp_path(yt_dlp_path)
+                .ffmpeg_progress(|progress| println!("{progress}"))
+                .build();
+
+            handle_video_task(cx, exporter);
+        }
+        TaskData::Playlist(data) => {
+            handle_playlist_task(cx);
+        }
+    }
+}
+
+fn handle_video_task(cx: &mut ContextProxy, exporter: VideoExporter<Unused>) {
+    let result = exporter
+        .fetch_video()
+        .and_then(|exporter| exporter.grab_filepath())
+        .and_then(|exporter| exporter.final_export());
+
+    if let Err(err) = result {
+        cx.emit_print_err(Error::from(err));
+    }
+}
+
+fn handle_playlist_task(cx: &mut ContextProxy) {
+    todo!();
 }

@@ -5,7 +5,7 @@ use vizia::icons::ICON_TRASH;
 use crate::{
     data::{
         task::{PlaylistData, TaskData, VideoData},
-        Task, TaskQueue,
+        ActiveTask, Task, TaskQueue,
     },
     models::video::VideoExportSettings,
     modifiers::ViewModifiers,
@@ -136,6 +136,8 @@ fn show_video_details<T: Lens<Target = Theme>>(
 
 pub enum TaskEvent {
     Remove(usize),
+    SetActive(Task),
+    UpdateActive(ActiveTask),
 }
 
 fn show_playlist_details<T: Lens<Target = Theme>>(

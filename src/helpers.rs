@@ -37,6 +37,19 @@ pub fn format_seconds(seconds: u64) -> String {
     }
 }
 
+pub fn parse_formatted_seconds(seconds: String) -> Option<u64> {
+    let mut time = seconds.split([':', '.']);
+
+    let hours: u64 = time.next()?.parse().ok()?;
+    let minutes: u64 = time.next()?.parse().ok()?;
+    let seconds: u64 = time.next()?.parse().ok()?;
+
+    hours
+        .checked_mul(3600)?
+        .checked_add(minutes.checked_mul(60)?)?
+        .checked_add(seconds)
+}
+
 static INVALID_CHARS: [char; 9] = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
 
 pub fn make_filename_valid(filename: String) -> String {
