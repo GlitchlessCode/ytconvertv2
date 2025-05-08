@@ -170,4 +170,27 @@ impl ActiveTask {
             },
         }
     }
+
+    pub fn set_video_progress(&mut self, new_progress: f32) {
+        match self {
+            ActiveTask::Video {
+                ref mut progress, ..
+            } => {
+                *progress = new_progress;
+            }
+            ActiveTask::Playlist {
+                ref mut video_progress,
+                ..
+            } => {
+                *video_progress = new_progress;
+            }
+        }
+    }
+
+    pub fn get_video_progress(&self) -> f32 {
+        *match self {
+            ActiveTask::Video { progress, .. } => progress,
+            ActiveTask::Playlist { video_progress, .. } => video_progress,
+        }
+    }
 }

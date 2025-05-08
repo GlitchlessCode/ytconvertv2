@@ -1,6 +1,7 @@
 use crate::theme::Theme;
 use vizia::prelude::*;
 
+pub mod activetask;
 pub mod animatedbinding;
 pub mod error;
 pub mod notificationservice;
@@ -19,6 +20,8 @@ pub mod all {
     pub use super::resizer::ResizerGroup;
 
     pub use super::task_queue::TaskQueueView;
+
+    pub use super::activetask::ActiveTaskView;
 
     pub use super::togglebuttonpanel::ToggleButtonChoice;
     pub use super::togglebuttonpanel::ToggleButtonPanel;

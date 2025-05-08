@@ -134,12 +134,6 @@ fn show_video_details<T: Lens<Target = Theme>>(
     .round_box(theme);
 }
 
-pub enum TaskEvent {
-    Remove(usize),
-    SetActive(Task),
-    UpdateActive(ActiveTask),
-}
-
 fn show_playlist_details<T: Lens<Target = Theme>>(
     cx: &mut Context,
     theme: T,
@@ -153,4 +147,12 @@ impl View for TaskView {
     fn element(&self) -> Option<&'static str> {
         Some("task")
     }
+}
+
+pub enum TaskEvent {
+    Remove(usize),
+    SetActive(Task),
+    UpdateActive(ActiveTask),
+    FinishActive,
+    MoveToNext,
 }

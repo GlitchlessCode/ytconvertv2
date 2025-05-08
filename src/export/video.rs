@@ -40,6 +40,11 @@ pub enum VideoExporterError {
     InvalidPathBufStr,
 }
 
+pub enum VideoProgress {
+    Progress(f32),
+    Done,
+}
+
 impl From<VideoExporterError> for crate::error::Error {
     fn from(value: VideoExporterError) -> Self {
         let title = format!(
@@ -60,7 +65,7 @@ impl From<VideoExporterError> for crate::error::Error {
         let code = match value {
             VideoExporterError::YoutubeDlError(_) => 301,
             VideoExporterError::IOError(_) => 8,
-            VideoExporterError::AnyhowError(err) => 400,
+            VideoExporterError::AnyhowError(_) => 400,
             VideoExporterError::TempDirMissing => 9,
             VideoExporterError::ExportMissing => 10,
             VideoExporterError::AmbiguousTempFile => 11,
@@ -83,7 +88,7 @@ pub struct VideoExporter<S> {
 #[bon]
 impl VideoExporter<Unused> {
     #[builder]
-    pub fn new<F: Fn(f32) + Send + Sync + 'static>(
+    pub fn new<F: Fn(VideoProgress) + Send + Sync + 'static>(
         export_location: PathBuf,
         data: VideoData,
         settings: VideoExportSettings,
@@ -107,7 +112,7 @@ pub struct Unused {
     data: VideoData,
     settings: VideoExportSettings,
     yt_dlp_path: PathBuf,
-    ffmpeg_progress: Box<dyn Fn(f32) + Send + Sync + 'static>,
+    ffmpeg_progress: Box<dyn Fn(VideoProgress) + Send + Sync + 'static>,
 }
 
 impl VideoExporter<Unused> {
@@ -158,7 +163,7 @@ pub struct VideoFetched {
     export_location: PathBuf,
     data: VideoData,
     settings: VideoExportSettings,
-    ffmpeg_progress: Box<dyn Fn(f32) + Send + Sync + 'static>,
+    ffmpeg_progress: Box<dyn Fn(VideoProgress) + Send + Sync + 'static>,
     temporary_dir: TempDir,
     id_name: String,
 }
@@ -227,7 +232,7 @@ pub struct PathGrabbed {
     export_location: PathBuf,
     data: VideoData,
     settings: VideoExportSettings,
-    ffmpeg_progress: Box<dyn Fn(f32) + Send + Sync + 'static>,
+    ffmpeg_progress: Box<dyn Fn(VideoProgress) + Send + Sync + 'static>,
     temporary_dir: TempDir,
     input_path: PathBuf,
 }
@@ -276,14 +281,14 @@ impl VideoExporter<PathGrabbed> {
                 (Some(num), Some(div)) => {
                     let percentage = (num / div).clamp(0.0, 1.0);
                     if let Some(percentage) = percentage.to_f32().take_if(|p| p.is_finite()) {
-                        ffmpeg_progress(percentage);
+                        ffmpeg_progress(VideoProgress::Progress(percentage));
                     }
                 }
                 (_, _) => (),
             }
         }
 
-        ffmpeg_progress(1.0);
+        ffmpeg_progress(VideoProgress::Done);
 
         let result = ffmpeg.wait();
 

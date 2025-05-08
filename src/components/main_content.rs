@@ -64,7 +64,7 @@ pub fn main_content(cx: &mut Context) {
             .height(Stretch(1.0));
 
             VStack::new(cx, |cx| {
-                //ProgressBar goes here
+                ActiveTaskView::new(cx, AppData::theme, AppData::active_task);
             })
             .round_box(AppData::theme)
             .height(Pixels(120.0))

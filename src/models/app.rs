@@ -6,7 +6,7 @@ use crate::{
         ActiveTask, Task, TaskQueue,
     },
     error::{Error, ErrorSeverity},
-    export::video::{Unused, VideoExporter},
+    export::video::{Unused, VideoExporter, VideoProgress},
     helpers::ContextProxyExt,
     views::{all::*, task_queue::TaskEvent},
 };
@@ -124,6 +124,19 @@ impl Model for AppData {
                     *task = active_task;
                 }
             }
+            TaskEvent::FinishActive => {
+                cx.schedule_emit(
+                    TaskEvent::MoveToNext,
+                    Instant::now() + Duration::from_secs(1),
+                );
+            }
+            TaskEvent::MoveToNext => {
+                if let Some(task) = self.task_queue.pull() {
+                    cx.emit(TaskEvent::SetActive(task));
+                } else {
+                    self.active_task = None;
+                }
+            }
         });
 
         event.map(|event, _meta| match event {
@@ -190,12 +203,38 @@ fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf) {
     let export_location = task.location();
     match task.data() {
         TaskData::Video(data, settings) => {
+            let (tx, rx) = std::sync::mpsc::channel();
+
+            let mut active_task = ActiveTask::new(task.clone());
+
+            cx.spawn(move |cx| {
+                while let Ok(progress) = rx.recv() {
+                    match progress {
+                        VideoProgress::Progress(progress) => {
+                            active_task.set_video_progress(0.5 + progress / 2.0);
+                            cx.emit_print_err(TaskEvent::UpdateActive(active_task.clone()));
+                        }
+                        VideoProgress::Done => {
+                            break;
+                        }
+                    }
+                }
+
+                active_task.set_video_progress(1.0);
+                cx.emit_print_err(TaskEvent::UpdateActive(active_task));
+                cx.emit_print_err(TaskEvent::FinishActive);
+            });
+
             let exporter = VideoExporter::builder()
                 .export_location(export_location.to_owned())
                 .data(data.to_owned())
                 .settings(settings.to_owned())
                 .yt_dlp_path(yt_dlp_path)
-                .ffmpeg_progress(|progress| println!("{progress}"))
+                .ffmpeg_progress(move |progress| {
+                    if let Err(err) = tx.send(progress) {
+                        eprintln!("Failed to submit event to context proxy due to error: {err}");
+                    }
+                })
                 .build();
 
             handle_video_task(cx, exporter);
