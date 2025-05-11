@@ -31,6 +31,7 @@ impl View for Toolbar {
 }
 
 impl Toolbar {
+    // TODO - Finish the toolbar
     pub fn new<T>(cx: &mut Context, theme: T) -> Handle<Self>
     where
         T: Lens<Target = Theme>,

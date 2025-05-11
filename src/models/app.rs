@@ -1,14 +1,12 @@
-use super::{video::VideoExportSettings, *};
+use super::*;
 use crate::{
     config::ConfigEvent,
-    data::{
-        task::{PlaylistData, TaskData, VideoData},
-        ActiveTask, Task, TaskQueue,
-    },
+    data::{task::TaskData, ActiveTask, FfmpegInstallState, Task, TaskQueue},
     error::{Error, ErrorSeverity},
+    events::AppEvent,
     export::video::{Unused, VideoExporter, VideoProgress},
     helpers::ContextProxyExt,
-    views::{all::*, task_queue::TaskEvent},
+    views::task_queue::TaskEvent,
 };
 use rfd::FileDialog;
 use std::path::PathBuf;
@@ -23,7 +21,7 @@ pub struct AppData {
 
     pub current_location: Option<PathBuf>,
     pub yt_dlp_path: PathBuf,
-    pub ffmpeg_install_state: FfmpegInstallState,
+    pub ffmpeg_install_state: FfmpegInstallState, // TODO - Display this
 
     #[cfg(windows)]
     pub maximized: bool,
@@ -84,7 +82,14 @@ impl Model for AppData {
                 if self.ffmpeg_install_state == FfmpegInstallState::Installed {
                     self.active_task = Some(ActiveTask::new(task.clone()));
                     let yt_dlp_path = self.yt_dlp_path.clone();
-                    cx.spawn(|cx| handle_task(cx, task, yt_dlp_path));
+
+                    let executable = if cfg!(windows) {
+                        "yt-dlp.exe"
+                    } else {
+                        "yt-dlp"
+                    };
+
+                    cx.spawn(move |cx| handle_task(cx, task, yt_dlp_path.join(executable)));
                 } else if self.ffmpeg_install_state == FfmpegInstallState::Installing
                     || self.ffmpeg_install_state == FfmpegInstallState::Updating
                 {
@@ -148,57 +153,6 @@ impl Model for AppData {
     }
 }
 
-#[non_exhaustive]
-pub enum AppEvent {
-    // Windows only
-    #[cfg(windows)]
-    Maximized(bool),
-
-    // Export location
-    RequestLocationChange,
-    SetNewLocation(PathBuf),
-
-    // Ffmpeg install
-    SetFfmpegInstallState(FfmpegInstallState),
-
-    // Submit Task
-    SubmitTask(Task),
-    RemoveTask(usize),
-
-    // Toggle button
-    ToggleVideo,
-    TogglePlaylist,
-}
-
-#[derive(Clone, PartialEq)]
-pub enum FfmpegInstallState {
-    Installed,
-    Installing,
-    Updating,
-
-    Failed,
-    Missing,
-    Unknown,
-}
-
-impl std::fmt::Display for FfmpegInstallState {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Installed => "Installed",
-                Self::Installing => "Installing",
-                Self::Updating => "Updating",
-
-                Self::Failed => "Failed",
-                Self::Missing => "Missing",
-                Self::Unknown => "Unknown",
-            }
-        )
-    }
-}
-
 fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf) {
     let export_location = task.location();
     match task.data() {
@@ -206,12 +160,13 @@ fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf) {
             let (tx, rx) = std::sync::mpsc::channel();
 
             let mut active_task = ActiveTask::new(task.clone());
+            active_task.set_downloading(false);
 
             cx.spawn(move |cx| {
                 while let Ok(progress) = rx.recv() {
                     match progress {
                         VideoProgress::Progress(progress) => {
-                            active_task.set_video_progress(0.5 + progress / 2.0);
+                            active_task.set_video_progress(progress);
                             cx.emit_print_err(TaskEvent::UpdateActive(active_task.clone()));
                         }
                         VideoProgress::Done => {
@@ -237,7 +192,7 @@ fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf) {
                 })
                 .build();
 
-            handle_video_task(cx, exporter);
+            handle_video_task(cx, exporter, task.clone());
         }
         TaskData::Playlist(data) => {
             handle_playlist_task(cx);
@@ -245,9 +200,14 @@ fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf) {
     }
 }
 
-fn handle_video_task(cx: &mut ContextProxy, exporter: VideoExporter<Unused>) {
+fn handle_video_task(cx: &mut ContextProxy, exporter: VideoExporter<Unused>, task: Task) {
     let result = exporter
         .fetch_video()
+        .inspect(|_| {
+            let mut active_task = ActiveTask::new(task);
+            active_task.set_downloading(false);
+            cx.emit_print_err(TaskEvent::UpdateActive(active_task));
+        })
         .and_then(|exporter| exporter.grab_filepath())
         .and_then(|exporter| exporter.final_export());
 

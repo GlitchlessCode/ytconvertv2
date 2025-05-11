@@ -1,5 +1,5 @@
 use super::*;
-use ytconvertv2::{include_bytes_safe, models::video::LARGE_PLACEHOLDER};
+use ytconvertv2::{include_bytes_safe, models::LARGE_PLACEHOLDER};
 
 pub fn load_resources(cx: &mut Context) {
     // Add font

@@ -1,13 +1,13 @@
-use vizia::icons::{ICON_RELOAD, ICON_SQUARE_ROUNDED_CHEVRONS_RIGHT_FILLED};
-use ytconvertv2::{
-    data::Task,
-    models::video::{ExportType, VideoExportSettings, VideoExportSettingsEvent},
-};
-
 use super::*;
 
+use vizia::icons::{ICON_RELOAD, ICON_SQUARE_ROUNDED_CHEVRONS_RIGHT_FILLED};
+use ytconvertv2::{
+    data::{ExportType, Task, VideoExportSettings},
+    events::{AppVideoEvent, VideoExportSettingsEvent},
+};
+
 pub fn video_settings(cx: &mut Context) {
-    labelled(cx, AppData::theme, "Youtube Link", |cx| {
+    labelled(cx, AppData::theme, "Youtube Video Link", |cx| {
         HStack::new(cx, |cx| {
             Textbox::new(cx, AppVideoData::link)
                 .disabled(AppVideoData::searching)
@@ -40,7 +40,9 @@ pub fn video_settings(cx: &mut Context) {
                 AnimatedBinding::new(cx, AppVideoData::thumbnail_generation, |cx, _| {
                     Image::new(cx, "video_thumb")
                         .class("thumbnail-img")
-                        .corner_radius(Pixels(8.0));
+                        .corner_radius(Pixels(8.0))
+                        .border_width(Pixels(1.0))
+                        .border_color(AppData::theme.map(|theme| theme.border));
                 })
                 .set_anim_in(AnimationDef::new(
                     fade_in,
@@ -84,6 +86,9 @@ pub fn video_settings(cx: &mut Context) {
                         }
                     }),
                 )
+                .width(Stretch(1.0))
+                .text_wrap(false)
+                .text_overflow(TextOverflow::Ellipsis)
                 .color(AppData::theme.map(|theme| theme.text_primary));
                 Label::new(
                     cx,

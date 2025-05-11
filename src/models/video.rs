@@ -1,17 +1,13 @@
+use super::*;
+
 use std::path::PathBuf;
 
-use super::*;
 use crate::{
-    data::task::VideoData,
-    error::{Error, ErrorSeverity},
-    helpers::make_filename_valid,
-    include_bytes_safe,
-    views::all::{Notification, NotificationLevel},
+    data::{task::VideoData, VideoExportSettings},
+    events::AppVideoEvent,
 };
 use reqwest::blocking::{Client, Response};
 use youtube_dl::{YoutubeDl, YoutubeDlOutput};
-
-pub static LARGE_PLACEHOLDER: &[u8] = include_bytes_safe!("..", "img", "large_placeholder.png");
 
 #[derive(Lens)]
 pub struct AppVideoData {
@@ -31,162 +27,10 @@ pub struct AppVideoData {
     yt_dlp: PathBuf,
 }
 
-#[derive(Lens, Data, Clone, PartialEq, Debug)]
-pub struct VideoExportSettings {
-    pub title: String,
-
-    pub export_type: ExportType,
-}
-
-impl VideoExportSettings {
-    fn new(title: String) -> Self {
-        Self {
-            title: make_filename_valid(title),
-            export_type: AudioExtension::Mp3.into(),
-        }
-    }
-
-    fn event(&mut self, _cx: &mut EventContext, event: VideoExportSettingsEvent) {
-        match event {
-            VideoExportSettingsEvent::ChangeTitle(title) => {
-                self.title = make_filename_valid(title);
-            }
-            VideoExportSettingsEvent::SetToVideo(set_to_video) => {
-                if set_to_video {
-                    if self.export_type.is_audio() {
-                        self.export_type = ExportType::Video(VideoExtension::Mp4);
-                    }
-                } else {
-                    if self.export_type.is_video() {
-                        self.export_type = ExportType::Audio(AudioExtension::Mp3);
-                    }
-                }
-            }
-            VideoExportSettingsEvent::SetExtension(extension) => {
-                if (extension.is_audio() && self.export_type.is_audio())
-                    || (extension.is_video() && self.export_type.is_video())
-                {
-                    self.export_type = extension;
-                }
-            }
-        }
-    }
-}
-
-pub enum VideoExportSettingsEvent {
-    ChangeTitle(String),
-    SetToVideo(bool),
-    SetExtension(ExportType),
-}
-
-#[derive(Clone, Data, PartialEq, Debug)]
-pub enum ExportType {
-    Audio(AudioExtension),
-    Video(VideoExtension),
-}
-
-impl ExportType {
-    pub fn is_audio(&self) -> bool {
-        match self {
-            Self::Audio(_) => true,
-            Self::Video(_) => false,
-        }
-    }
-
-    pub fn is_video(&self) -> bool {
-        match self {
-            Self::Audio(_) => false,
-            Self::Video(_) => true,
-        }
-    }
-
-    pub fn formats(&self) -> Vec<ExportType> {
-        match self {
-            Self::Audio(_) => vec![
-                AudioExtension::Mp3.into(),
-                AudioExtension::Wav.into(),
-                AudioExtension::Ogg.into(),
-            ],
-            Self::Video(_) => vec![
-                VideoExtension::Mp4.into(),
-                VideoExtension::Mov.into(),
-                VideoExtension::Mkv.into(),
-            ],
-        }
-    }
-}
-
-impl std::fmt::Display for ExportType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Audio(a) => a.to_string(),
-                Self::Video(v) => v.to_string(),
-            }
-        )
-    }
-}
-
-#[derive(Clone, Data, PartialEq, Debug)]
-pub enum AudioExtension {
-    Mp3,
-    Wav,
-    Ogg,
-}
-
-impl std::fmt::Display for AudioExtension {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            ".{}",
-            match self {
-                Self::Mp3 => "mp3",
-                Self::Wav => "wav",
-                Self::Ogg => "ogg",
-            }
-        )
-    }
-}
-
-impl From<AudioExtension> for ExportType {
-    fn from(value: AudioExtension) -> Self {
-        ExportType::Audio(value)
-    }
-}
-
-#[derive(Clone, Data, PartialEq, Debug)]
-pub enum VideoExtension {
-    Mp4,
-    Mov,
-    Mkv,
-}
-
-impl std::fmt::Display for VideoExtension {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            ".{}",
-            match self {
-                Self::Mp4 => "mp4",
-                Self::Mov => "mov",
-                Self::Mkv => "mkv",
-            }
-        )
-    }
-}
-
-impl From<VideoExtension> for ExportType {
-    fn from(value: VideoExtension) -> Self {
-        ExportType::Video(value)
-    }
-}
-
 impl AppVideoData {
-    pub fn new(yt_dlp: PathBuf) -> Self {
+    pub fn new(yt_dlp: PathBuf, client: Client) -> Self {
         Self {
-            client: Client::new(),
+            client,
             searching: false,
             link: String::new(),
             video: None,
@@ -260,20 +104,6 @@ impl AppVideoData {
 
         self.thumbnail_generation += 1;
     }
-}
-
-pub enum AppVideoEvent {
-    LinkSubmit(String),
-    Reset,
-
-    TryVideoUrl(String),
-    UrlFailed,
-    UrlSucceeded(VideoData, String),
-
-    FetchThumbnail(String),
-    FinishedThumbnailFetch(String, Response),
-
-    ExportSettingsEvent(VideoExportSettingsEvent),
 }
 
 impl Model for AppVideoData {

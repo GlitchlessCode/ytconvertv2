@@ -1,5 +1,6 @@
 use super::*;
 use playlist_settings::playlist_settings;
+use reqwest::blocking::Client;
 use video_settings::video_settings;
 use vizia::icons::{ICON_LIST, ICON_PLAYER_PLAY};
 
@@ -56,7 +57,11 @@ pub fn draw_export_settings(cx: &mut Context) {
             "yt-dlp"
         };
 
-        AppVideoData::new(AppData::yt_dlp_path.get(cx).join(executable)).build(cx);
+        let yt_dlp = AppData::yt_dlp_path.get(cx).join(executable);
+        let client = Client::new();
+
+        AppVideoData::new(yt_dlp.clone(), client.clone()).build(cx);
+        AppPlaylistData::new(yt_dlp, client).build(cx);
 
         AnimatedBinding::new(cx, AppData::playlist_selected, |cx, pl_selected| {
             VStack::new(cx, move |cx| {

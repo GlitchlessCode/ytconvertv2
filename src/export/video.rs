@@ -1,8 +1,10 @@
 use crate::{
-    data::task::VideoData, error::ErrorSeverity, helpers::parse_formatted_seconds,
-    models::video::VideoExportSettings,
+    data::{task::VideoData, VideoExportSettings},
+    error::ErrorSeverity,
+    helpers::parse_formatted_seconds,
 };
 use bon::bon;
+use ffmpeg_sidecar::event::{FfmpegEvent, LogLevel};
 use nanoid::nanoid;
 use num_traits::ToPrimitive;
 use std::{
@@ -132,11 +134,7 @@ impl VideoExporter<Unused> {
         ytdl.youtube_dl_path(yt_dlp_path)
             .flat_playlist(true)
             .output_template(format!("{name}"))
-            .extra_arg("--no-playlist")
-            .extra_arg(format!(
-                "--ffmpeg-location {}",
-                ffmpeg_sidecar::paths::ffmpeg_path().to_string_lossy()
-            ));
+            .extra_arg("--no-playlist");
 
         if settings.export_type.is_audio() {
             ytdl.format("ba");
@@ -275,18 +273,27 @@ impl VideoExporter<PathGrabbed> {
             }
         };
 
-        for progress in steps.filter_progress() {
-            let seconds = parse_formatted_seconds(progress.time);
-            match (seconds.and_then(|s| s.to_f64()), data.duration().to_f64()) {
-                (Some(num), Some(div)) => {
-                    let percentage = (num / div).clamp(0.0, 1.0);
-                    if let Some(percentage) = percentage.to_f32().take_if(|p| p.is_finite()) {
-                        ffmpeg_progress(VideoProgress::Progress(percentage));
-                    }
+        let steps = steps
+            .filter_map(|msg| match msg {
+                FfmpegEvent::Log(LogLevel::Info, info) => Some(info),
+                _ => None,
+            })
+            .filter_map(|info| {
+                info.split_whitespace()
+                    .find_map(|s| s.strip_prefix("time=").map(|s| s.to_string()))
+            })
+            .filter_map(|seconds| parse_formatted_seconds(seconds))
+            .filter_map(|seconds| seconds.to_f64());
+
+        if let Some(total) = data.duration().to_f64() {
+            for seconds in steps {
+                let percentage = (seconds / total).clamp(0.0, 1.0);
+                if let Some(percentage) = percentage.to_f32().take_if(|p| p.is_finite()) {
+                    ffmpeg_progress(VideoProgress::Progress(percentage));
                 }
-                (_, _) => (),
             }
         }
+        // TODO - Change ActiveTaskView to display yt_dlp processing, then ffmpeg progressbar, instead of conglomerated
 
         ffmpeg_progress(VideoProgress::Done);
 

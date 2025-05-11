@@ -1,3 +1,5 @@
+// TODO - Split types into separate files
+
 use super::*;
 use bon::Builder;
 use std::collections::VecDeque;

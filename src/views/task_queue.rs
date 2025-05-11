@@ -5,9 +5,8 @@ use vizia::icons::ICON_TRASH;
 use crate::{
     data::{
         task::{PlaylistData, TaskData, VideoData},
-        ActiveTask, Task, TaskQueue,
+        ActiveTask, Task, TaskQueue, VideoExportSettings,
     },
-    models::video::VideoExportSettings,
     modifiers::ViewModifiers,
 };
 

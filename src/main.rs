@@ -7,9 +7,9 @@ use vizia::prelude::*;
 use ytconvertv2::{
     async_logic::{run_event_loop, AsyncAppEvent},
     config::{ConfigEvent, ConfigModel},
-    data::TaskQueue,
+    data::{FfmpegInstallState, TaskQueue},
     error::{error_popup, ErrorManager},
-    models::{all::*, app::FfmpegInstallState},
+    models::all::*,
     theme::Theme,
     views::all::*,
 };
@@ -39,6 +39,7 @@ fn main() -> Result<(), ApplicationError> {
             let maximized_timer = cx.add_timer(Duration::from_millis(200), None, |ex, _action| {
                 let mut proxy = ex.get_proxy();
                 ex.modify_window(|window| {
+                    // TODO - Update this proxy emit
                     if let Err(error) = proxy.emit(AppEvent::Maximized(window.is_maximized())) {
                         eprintln!("{error}")
                     }

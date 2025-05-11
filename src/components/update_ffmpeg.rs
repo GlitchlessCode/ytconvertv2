@@ -1,7 +1,8 @@
 use ytconvertv2::{
+    data::FfmpegInstallState,
     error::{Error, ErrorSeverity},
+    events::AppEvent,
     helpers::ContextProxyExt,
-    models::app::FfmpegInstallState,
 };
 
 use super::*;

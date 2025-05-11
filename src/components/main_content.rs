@@ -3,6 +3,7 @@ use draw_export_settings::draw_export_settings;
 use vizia::icons::ICON_FOLDER;
 use ytconvertv2::{
     error::{Error, ErrorSeverity},
+    events::AppEvent,
     helpers::{format_seconds, labelled},
     modifiers::ViewModifiers,
 };

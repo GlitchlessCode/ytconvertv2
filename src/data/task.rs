@@ -1,8 +1,7 @@
-use std::path::PathBuf;
-use vizia::prelude::*;
-use youtube_dl::SingleVideo;
+use super::*;
 
-use crate::models::video::VideoExportSettings;
+use std::path::PathBuf;
+use youtube_dl::SingleVideo;
 
 #[derive(Debug, Data, Clone)]
 pub struct Task {
@@ -145,11 +144,13 @@ pub enum ActiveTask {
     Video {
         data: VideoData,
         settings: VideoExportSettings,
+        downloading: bool,
         progress: f32,
     },
     Playlist {
         data: PlaylistData,
         // settings:
+        downloading: bool,
         video_progress: f32,
         playlist_progress: f32,
     },
@@ -161,10 +162,12 @@ impl ActiveTask {
             TaskData::Video(data, settings) => Self::Video {
                 data,
                 settings,
+                downloading: true,
                 progress: 0.0,
             },
             TaskData::Playlist(data) => Self::Playlist {
                 data,
+                downloading: true,
                 video_progress: 0.0,
                 playlist_progress: 0.0,
             },
@@ -191,6 +194,30 @@ impl ActiveTask {
         *match self {
             ActiveTask::Video { progress, .. } => progress,
             ActiveTask::Playlist { video_progress, .. } => video_progress,
+        }
+    }
+
+    pub fn set_downloading(&mut self, new_downloading: bool) {
+        match self {
+            ActiveTask::Video {
+                ref mut downloading,
+                ..
+            } => {
+                *downloading = new_downloading;
+            }
+            ActiveTask::Playlist {
+                ref mut downloading,
+                ..
+            } => {
+                *downloading = new_downloading;
+            }
+        }
+    }
+
+    pub fn get_downloading(&self) -> bool {
+        *match self {
+            ActiveTask::Video { downloading, .. } => downloading,
+            ActiveTask::Playlist { downloading, .. } => downloading,
         }
     }
 }
