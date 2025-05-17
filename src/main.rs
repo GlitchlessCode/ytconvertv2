@@ -4,6 +4,8 @@ use components::{
     update_yt_dlp::update_yt_dlp,
 };
 use platform_dirs::AppDirs;
+use velopack::VelopackApp;
+use velopack_updates::check_for_updates;
 use vizia::prelude::*;
 use ytconvertv2::{
     async_logic::{run_event_loop, AsyncAppEvent},
@@ -19,10 +21,13 @@ use ytconvertv2::{
 };
 
 mod components;
+mod velopack_updates;
 
 static CORNER_SIZE: Units = Pixels(6.0);
 
 fn main() -> Result<(), ApplicationError> {
+    VelopackApp::build().run();
+
     let rt = tokio::runtime::Runtime::new().expect("Failed to boot tokio runtime");
     let (async_tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -33,6 +38,8 @@ fn main() -> Result<(), ApplicationError> {
     });
 
     let dirs = AppDirs::new(Some("ytconvertv2"), false);
+
+    let (update_tx, update_rx) = std::sync::mpsc::channel();
 
     let inner_async_tx = async_tx.clone();
     let app_result = Application::new(move |cx| {
@@ -56,9 +63,16 @@ fn main() -> Result<(), ApplicationError> {
 
         error_popup(cx, AppData::theme);
 
-        cx.add_global_listener(|_ex, event| {
+        cx.add_global_listener(move |ex, event| {
             event.take(|event, _meta| match event {
-                GlobalEvent::CheckForUpdates => (),
+                GlobalEvent::CheckForUpdates => check_for_updates(ex),
+                GlobalEvent::RestartForUpdate(manager, update) => {
+                    if let Err(_) = update_tx.send((manager, update)) {
+                        eprintln!("Failed to emit update manager for use in restart");
+                    }
+
+                    ex.emit(WindowEvent::WindowClose);
+                }
             })
         });
 
@@ -165,6 +179,12 @@ fn main() -> Result<(), ApplicationError> {
     }
     if let Err(_) = tokio_handle.join() {
         eprintln!("Failed to join on tokio runtime thread");
+    }
+
+    if let Ok((manager, update)) = update_rx.try_recv() {
+        if let Err(_) = manager.apply_updates_and_restart(&update) {
+            eprintln!("Failed to apply updates");
+        }
     }
 
     return app_result;

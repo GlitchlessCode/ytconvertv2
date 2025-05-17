@@ -1,5 +1,3 @@
-// TODO - Add theme config
-
 use std::{
     fs::OpenOptions,
     io::{Read, Write},

@@ -273,7 +273,7 @@ impl NotificationView {
                 .on_background(theme)
                 .corner_radius(Pixels(18.0))
                 .border_color(color)
-                .border_width(Pixels(2.0));
+                .border_width(Pixels(1.0));
             })
             .background_color("transparent")
             .width(Stretch(1.0))

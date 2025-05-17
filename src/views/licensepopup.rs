@@ -106,7 +106,7 @@ impl LicenseView {
 
                         Spacer::new(cx);
 
-                        Svg::new(cx, ICON_SCALE).fill(theme.map(|theme| theme.text_secondary)); // TODO - Fix sizing: Svg creates space, when missing space is missing
+                        Svg::new(cx, ICON_SCALE).fill(theme.map(|theme| theme.text_secondary));
 
                         Label::new(cx, license.unwrap_or("No License".to_string()))
                             .with_text_secondary(theme);
