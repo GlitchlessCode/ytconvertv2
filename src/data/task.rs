@@ -1,7 +1,6 @@
 use super::*;
 
 use std::path::PathBuf;
-use youtube_dl::SingleVideo;
 
 #[derive(Debug, Data, Clone)]
 pub struct Task {
@@ -24,10 +23,14 @@ impl Task {
     /// Create a new Playlist task
     ///
     /// `location` must be valid
-    pub fn playlist(location: PathBuf) -> Self {
+    pub fn playlist(
+        location: PathBuf,
+        data: PlaylistData,
+        settings: PlaylistExportSettings,
+    ) -> Self {
         Self {
             export_location: location,
-            data: TaskData::playlist(vec![]),
+            data: TaskData::Playlist(data, settings),
         }
     }
 
@@ -61,163 +64,15 @@ impl Task {
 #[derive(Debug, Data, Clone)]
 pub enum TaskData {
     Video(VideoData, VideoExportSettings),
-    Playlist(PlaylistData),
+    Playlist(PlaylistData, PlaylistExportSettings),
 }
 
 impl TaskData {
-    fn playlist(videos: Vec<VideoData>) -> Self {
-        Self::Playlist(PlaylistData { videos })
-    }
-
     /// Get the task type as a string
     pub fn get_type(&self) -> &str {
         match self {
             Self::Video { .. } => "VIDEO",
             Self::Playlist { .. } => "PLAYLIST",
-        }
-    }
-}
-
-#[derive(Debug, Data, Clone)]
-pub struct VideoData {
-    title: String,
-    url: String,
-    author: String,
-    duration: u64,
-    thumbnail_id: String,
-}
-
-impl VideoData {
-    pub fn title(&self) -> &String {
-        &self.title
-    }
-
-    pub fn url(&self) -> &String {
-        &self.url
-    }
-
-    pub fn author(&self) -> &String {
-        &self.author
-    }
-
-    pub fn duration(&self) -> u64 {
-        self.duration
-    }
-
-    pub fn thumbnail(&self) -> &String {
-        &self.thumbnail_id
-    }
-}
-
-impl TryFrom<SingleVideo> for VideoData {
-    type Error = ();
-    fn try_from(value: SingleVideo) -> Result<Self, Self::Error> {
-        let title = value.title.ok_or(())?;
-        let url = format!("https://www.youtube.com/watch?v={}", value.id);
-        let author = value.channel.ok_or(())?;
-        let duration = value.duration.ok_or(())?.as_u64().ok_or(())?;
-        let thumbnail_id = format!("https://i.ytimg.com/vi/{}/mqdefault.jpg", value.id);
-
-        Ok(Self {
-            title,
-            url,
-            author,
-            duration,
-            thumbnail_id,
-        })
-    }
-}
-
-#[derive(Debug, Data, Clone)]
-pub struct PlaylistData {
-    videos: Vec<VideoData>,
-}
-
-impl PlaylistData {
-    pub fn iter(&self) -> std::slice::Iter<'_, VideoData> {
-        self.videos.iter()
-    }
-}
-
-#[derive(Debug, Data, Clone)]
-pub enum ActiveTask {
-    Video {
-        data: VideoData,
-        settings: VideoExportSettings,
-        downloading: bool,
-        progress: f32,
-    },
-    Playlist {
-        data: PlaylistData,
-        // settings:
-        downloading: bool,
-        video_progress: f32,
-        playlist_progress: f32,
-    },
-}
-
-impl ActiveTask {
-    pub fn new(base: Task) -> Self {
-        match base.data {
-            TaskData::Video(data, settings) => Self::Video {
-                data,
-                settings,
-                downloading: true,
-                progress: 0.0,
-            },
-            TaskData::Playlist(data) => Self::Playlist {
-                data,
-                downloading: true,
-                video_progress: 0.0,
-                playlist_progress: 0.0,
-            },
-        }
-    }
-
-    pub fn set_video_progress(&mut self, new_progress: f32) {
-        match self {
-            ActiveTask::Video {
-                ref mut progress, ..
-            } => {
-                *progress = new_progress;
-            }
-            ActiveTask::Playlist {
-                ref mut video_progress,
-                ..
-            } => {
-                *video_progress = new_progress;
-            }
-        }
-    }
-
-    pub fn get_video_progress(&self) -> f32 {
-        *match self {
-            ActiveTask::Video { progress, .. } => progress,
-            ActiveTask::Playlist { video_progress, .. } => video_progress,
-        }
-    }
-
-    pub fn set_downloading(&mut self, new_downloading: bool) {
-        match self {
-            ActiveTask::Video {
-                ref mut downloading,
-                ..
-            } => {
-                *downloading = new_downloading;
-            }
-            ActiveTask::Playlist {
-                ref mut downloading,
-                ..
-            } => {
-                *downloading = new_downloading;
-            }
-        }
-    }
-
-    pub fn get_downloading(&self) -> bool {
-        *match self {
-            ActiveTask::Video { downloading, .. } => downloading,
-            ActiveTask::Playlist { downloading, .. } => downloading,
         }
     }
 }

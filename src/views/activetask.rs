@@ -1,6 +1,6 @@
 use vizia::icons::ICON_CHEVRON_RIGHT;
 
-use crate::data::ActiveTask;
+use crate::{data::ActiveTask, modifiers::ThemeModifiers};
 
 use super::{all::*, *};
 
@@ -30,10 +30,68 @@ impl ActiveTaskView {
                             .gap(Pixels(3.0))
                             .alignment(Alignment::Center);
                         }
-                        Some(ActiveTask::Playlist { .. }) => {}
+                        Some(ActiveTask::Playlist { settings, .. }) => {
+                            VStack::new(cx, |cx| {
+                                Label::new(cx, settings.title)
+                                    .color(theme.map(|theme| theme.primary))
+                                    .font_size("small")
+                                    .text_overflow(TextOverflow::Ellipsis)
+                                    .text_wrap(false)
+                                    .width(Stretch(1.0));
+
+                                HStack::new(cx, |cx| {
+                                    Label::new(
+                                        cx,
+                                        active_task.map(|task| {
+                                            if let Some(data) = task
+                                                .as_ref()
+                                                .and_then(|task| task.get_active_video())
+                                            {
+                                                format!("{}", data.title)
+                                            } else {
+                                                "No Video Processing...".to_string()
+                                            }
+                                        }),
+                                    )
+                                    .with_text_primary(theme)
+                                    .font_size("small")
+                                    .text_overflow(TextOverflow::Ellipsis)
+                                    .text_wrap(false);
+
+                                    Spacer::new(cx);
+
+                                    Label::new(
+                                        cx,
+                                        active_task.map(|task| {
+                                            if let Some((finished, total)) = task
+                                                .as_ref()
+                                                .and_then(|task| task.get_count_ratio())
+                                            {
+                                                format!(
+                                                    "{}/{total}",
+                                                    std::cmp::min(finished, total)
+                                                )
+                                            } else {
+                                                "No Video Processing...".to_string()
+                                            }
+                                        }),
+                                    )
+                                    .with_text_secondary(theme)
+                                    .font_size("small")
+                                    .text_overflow(TextOverflow::Ellipsis)
+                                    .text_wrap(false);
+                                })
+                                .height(Auto);
+
+                                video_components(cx, theme, active_task);
+                            })
+                            .height(Auto)
+                            .gap(Pixels(3.0))
+                            .alignment(Alignment::Center);
+                        }
                         None => {
                             Label::new(cx, "No Active Task...")
-                                .color(theme.map(|theme| theme.text_light))
+                                .with_text_light(theme)
                                 .font_size("small");
                         }
                     })

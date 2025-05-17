@@ -1,13 +1,19 @@
+use super::{PlaylistExportSettingsEvent, PlaylistVideoSettingsEvent};
+
+use crate::data::PlaylistData;
 use reqwest::blocking::Response;
 
 pub enum AppPlaylistEvent {
     LinkSubmit(String),
     Reset,
 
-    // TryVideoUrl(String),
-    // UrlFailed,
-    // UrlSucceeded(VideoData, String),
+    TryPlaylistUrl(String),
+    UrlFailed,
+    UrlSucceeded(PlaylistData, String), // Data, Original url
+
     FetchThumbnail(String),
     FinishedThumbnailFetch(String, Response),
-    // ExportSettingsEvent(VideoExportSettingsEvent),
+
+    ExportSettingsEvent(PlaylistExportSettingsEvent),
+    PlaylistVideoSettingsEvent(usize, PlaylistVideoSettingsEvent),
 }

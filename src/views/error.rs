@@ -2,7 +2,7 @@ use vizia::icons::{ICON_ALERT_HEXAGON, ICON_HELP_HEXAGON};
 
 use crate::{
     error::{Error, ErrorSeverity},
-    modifiers::ViewModifiers,
+    modifiers::{ThemeModifiers, ViewModifiers},
 };
 
 use super::*;
@@ -25,14 +25,14 @@ impl ErrorView {
                         }
 
                         Label::new(cx, format!("E{:0>5}", error.code))
-                            .color(theme.map(|theme| theme.text_primary))
+                            .with_text_primary(theme)
                             .width(Auto);
 
                         Label::new(cx, error.title)
                             .width(Stretch(1.0))
                             .text_overflow(TextOverflow::Ellipsis)
                             .text_wrap(false)
-                            .color(theme.map(|theme| theme.text_primary));
+                            .with_text_primary(theme);
                     })
                     .alignment(Alignment::Left)
                     .height(Auto)
@@ -43,7 +43,7 @@ impl ErrorView {
                             Label::new(cx, description)
                                 .text_wrap(true)
                                 .font_size("small")
-                                .color(theme.map(|theme| theme.text_secondary))
+                                .with_text_secondary(theme)
                                 .width(Stretch(1.0));
                         }
 
@@ -56,7 +56,7 @@ impl ErrorView {
                 .padding(Pixels(6.0))
                 .gap(Pixels(3.0))
                 .round_box(theme)
-                .background_color(theme.map(|theme| theme.background_light));
+                .on_background_light(theme);
             })
             .padding_bottom(Pixels(6.0))
             .layout_type(LayoutType::Column)
@@ -65,4 +65,8 @@ impl ErrorView {
     }
 }
 
-impl View for ErrorView {}
+impl View for ErrorView {
+    fn element(&self) -> Option<&'static str> {
+        Some("error")
+    }
+}

@@ -1,5 +1,6 @@
 use components::{
-    load_resources::load_resources, main_content::main_content, update_ffmpeg::update_ffmpeg,
+    about_popup::about_popup, license_popup::license_popup, load_resources::load_resources,
+    main_content::main_content, settings_popup::settings_popup, update_ffmpeg::update_ffmpeg,
     update_yt_dlp::update_yt_dlp,
 };
 use platform_dirs::AppDirs;
@@ -9,7 +10,10 @@ use ytconvertv2::{
     config::{ConfigEvent, ConfigModel},
     data::{FfmpegInstallState, TaskQueue},
     error::{error_popup, ErrorManager},
+    events::GlobalEvent,
+    licenses::parse_licenses,
     models::all::*,
+    modifiers::ThemeModifiers,
     theme::Theme,
     views::all::*,
 };
@@ -39,10 +43,7 @@ fn main() -> Result<(), ApplicationError> {
             let maximized_timer = cx.add_timer(Duration::from_millis(200), None, |ex, _action| {
                 let mut proxy = ex.get_proxy();
                 ex.modify_window(|window| {
-                    // TODO - Update this proxy emit
-                    if let Err(error) = proxy.emit(AppEvent::Maximized(window.is_maximized())) {
-                        eprintln!("{error}")
-                    }
+                    proxy.emit_print_err(AppEvent::Maximized(window.is_maximized()));
                 });
             });
 
@@ -55,6 +56,12 @@ fn main() -> Result<(), ApplicationError> {
 
         error_popup(cx, AppData::theme);
 
+        cx.add_global_listener(|_ex, event| {
+            event.take(|event, _meta| match event {
+                GlobalEvent::CheckForUpdates => (),
+            })
+        });
+
         let dependency_dir = dirs
             .clone()
             .map(|dirs| dirs.data_dir)
@@ -64,16 +71,7 @@ fn main() -> Result<(), ApplicationError> {
         // Build in root data
         AppData {
             // Build app theme
-            theme: Theme::builder()
-                .background("#252525")
-                .background_dark("#151515")
-                .background_light("#2f2f2f")
-                .border("#444444")
-                .primary("gold")
-                .text_primary("#eeeeee")
-                .text_secondary("#aaaaaa")
-                .text_light("#575757")
-                .build(),
+            theme: Theme::dark(),
 
             task_queue: TaskQueue::default(),
             active_task: None,
@@ -83,6 +81,15 @@ fn main() -> Result<(), ApplicationError> {
             current_location: None,
             yt_dlp_path: dependency_dir.clone().join("ytdlp"),
             ffmpeg_install_state: FfmpegInstallState::Unknown,
+
+            show_about: false,
+
+            show_settings: false,
+
+            show_licenses: false,
+            licenses: parse_licenses(),
+
+            update_settings: Default::default(),
 
             #[cfg(windows)]
             maximized: false,
@@ -110,6 +117,10 @@ fn main() -> Result<(), ApplicationError> {
         // Build notification model in
         NotificationService::new(cx);
 
+        about_popup(cx);
+        settings_popup(cx);
+        license_popup(cx);
+
         cx.emit(ConfigEvent::RequestSetup);
 
         let submission_tx = async_tx.clone();
@@ -125,9 +136,8 @@ fn main() -> Result<(), ApplicationError> {
                 VStack::new(cx, |cx| {
                     main_content(cx);
                 })
-                .background_color(AppData::theme.map(|theme| theme.background))
-                .border_color(AppData::theme.map(|theme| theme.border))
-                .border_width(Pixels(1.0))
+                .on_background(AppData::theme)
+                .with_border(AppData::theme)
                 .padding(CORNER_SIZE)
                 .size(Percentage(100.0))
                 .gap(Pixels(6.0))

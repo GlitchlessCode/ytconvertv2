@@ -8,6 +8,7 @@ pub mod error;
 pub mod events;
 pub mod export;
 pub mod helpers;
+pub mod licenses;
 pub mod models;
 pub mod modifiers;
 pub mod theme;

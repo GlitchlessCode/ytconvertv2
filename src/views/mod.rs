@@ -1,13 +1,17 @@
 use crate::theme::Theme;
 use vizia::prelude::*;
 
+pub mod aboutpopup;
 pub mod activetask;
 pub mod animatedbinding;
 pub mod error;
+pub mod licensepopup;
 pub mod notificationservice;
 pub mod progressbar;
 pub mod resizer;
-pub mod task_queue;
+pub mod settingsfield;
+pub mod settingspopup;
+pub mod taskqueue;
 pub mod togglebuttonpanel;
 pub mod toolbar;
 
@@ -19,7 +23,7 @@ pub mod all {
     pub use super::resizer::ResizerDirection;
     pub use super::resizer::ResizerGroup;
 
-    pub use super::task_queue::TaskQueueView;
+    pub use super::taskqueue::TaskQueueView;
 
     pub use super::activetask::ActiveTaskView;
 
@@ -28,6 +32,10 @@ pub mod all {
     pub use super::togglebuttonpanel::ToggleButtonPanelModifers;
 
     pub use super::progressbar::CustomProgressBar;
+
+    pub use super::aboutpopup::AboutPopup;
+    pub use super::licensepopup::LicensePopup;
+    pub use super::settingspopup::SettingsPopup;
 
     pub use super::animatedbinding::AnimatedBinding;
     pub use super::animatedbinding::AnimatedBindingModifiers;

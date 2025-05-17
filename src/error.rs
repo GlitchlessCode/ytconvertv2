@@ -3,7 +3,11 @@
 use std::sync::Arc;
 
 use super::*;
-use crate::{theme::Theme, views::error::ErrorView};
+use crate::{
+    modifiers::{ThemeModifiers, ViewModifiers},
+    theme::Theme,
+    views::error::ErrorView,
+};
 
 #[derive(Clone, Copy, Data, PartialEq, Debug)]
 pub enum ErrorSeverity {
@@ -166,9 +170,10 @@ pub fn error_popup<T: Lens<Target = Theme>>(cx: &mut Context, theme: T) {
                 VStack::new(cx, |cx| {
                     Textbox::new(cx, ErrorManager::popup_search_str)
                         .on_edit(|ex, state| ex.emit(ErrorManagerEvent::SetSearchString(state)))
+                        .round_box(theme)
                         .width(Stretch(1.0))
-                        .background_color(theme.map(|theme| theme.background_dark))
-                        .color(theme.map(|theme| theme.text_primary));
+                        .on_background_dark(theme)
+                        .with_text_primary(theme);
 
                     VirtualList::new(
                         cx,
@@ -182,7 +187,7 @@ pub fn error_popup<T: Lens<Target = Theme>>(cx: &mut Context, theme: T) {
                 .padding(Pixels(6.0))
                 .padding_bottom(Pixels(0.0))
                 .gap(Pixels(3.0))
-                .background_color(theme.map(|theme| theme.background));
+                .on_background(theme);
             })
             .min_inner_size(Some((600, 400)))
             .title("Errors & Warnings")

@@ -19,6 +19,8 @@ use nanoserde::{DeBin, SerBin};
 use platform_dirs::AppDirs;
 use vizia::prelude::*;
 
+use crate::{data::update_settings::UpdateSettings, theme::Theme};
+
 #[cfg(windows)]
 #[derive(Debug, SerBin, DeBin)]
 pub struct SerializablePath {
@@ -91,6 +93,10 @@ impl From<&SerializablePath> for Option<PathBuf> {
 struct Config {
     #[nserde(proxy = "SerializablePath")]
     location: Option<PathBuf>,
+
+    theme: Theme,
+
+    update_settings: UpdateSettings,
 }
 
 impl Config {
@@ -140,7 +146,7 @@ impl Config {
             Ok(mut file) => {
                 let serialized = self.serialize_bin();
                 if let Err(error) = file.write_all(&serialized) {
-                    eprintln!("Could not deserialize config due to error: {error}");
+                    eprintln!("Could not serialize config due to error: {error}");
                 }
             }
 
@@ -154,7 +160,11 @@ impl Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self { location: None }
+        Self {
+            location: None,
+            theme: Theme::dark(),
+            update_settings: Default::default(),
+        }
     }
 }
 
@@ -226,10 +236,20 @@ impl Model for ConfigModel {
                     }
                 }
 
+                ConfigEvent::SetTheme(theme) => {
+                    self.config().theme = theme.to_owned();
+                }
+
+                ConfigEvent::SetUpdateSettings(settings) => {
+                    self.config().update_settings = settings.to_owned();
+                }
+
                 ConfigEvent::RequestSetup => {
                     if let Some(ref config) = self.inner {
                         cx.emit(ConfigEvent::ConfigSetup {
                             location: config.location.to_owned(),
+                            theme: config.theme.to_owned(),
+                            update_settings: config.update_settings.to_owned(),
                         });
                     }
                 }
@@ -244,9 +264,15 @@ impl Model for ConfigModel {
 #[non_exhaustive]
 pub enum ConfigEvent {
     RequestSetup,
-    ConfigSetup { location: Option<PathBuf> },
+    ConfigSetup {
+        location: Option<PathBuf>,
+        theme: Theme,
+        update_settings: UpdateSettings,
+    },
 
     SetExportPath(PathBuf),
+    SetTheme(Theme),
+    SetUpdateSettings(UpdateSettings),
 }
 
 fn create_and_read<P>(path: P) -> std::io::Result<Vec<u8>>

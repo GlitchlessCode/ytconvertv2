@@ -4,10 +4,10 @@ use vizia::icons::ICON_TRASH;
 
 use crate::{
     data::{
-        task::{PlaylistData, TaskData, VideoData},
-        ActiveTask, Task, TaskQueue, VideoExportSettings,
+        ActiveTask, PlaylistData, PlaylistExportSettings, Task, TaskData, TaskQueue, VideoData,
+        VideoExportSettings,
     },
-    modifiers::ViewModifiers,
+    modifiers::{ThemeModifiers, ViewModifiers},
 };
 
 use super::*;
@@ -25,7 +25,7 @@ impl TaskQueueView {
                 if tasks.get(cx).is_empty() {
                     VStack::new(cx, |cx| {
                         Label::new(cx, "Task Queue Is Empty...")
-                            .color(theme.map(|theme| theme.text_light))
+                            .with_text_light(theme)
                             .font_size("small");
                     })
                     .alignment(Alignment::Center);
@@ -65,8 +65,8 @@ impl TaskView {
                     TaskData::Video(data, settings) => {
                         show_video_details(cx, theme, data, settings, task.location(), index)
                     }
-                    TaskData::Playlist(data) => {
-                        show_playlist_details(cx, theme, data, task.location(), index)
+                    TaskData::Playlist(data, settings) => {
+                        show_playlist_details(cx, theme, data, settings, task.location(), index)
                     }
                 }
             })
@@ -86,7 +86,7 @@ fn show_video_details<T: Lens<Target = Theme>>(
 ) {
     HStack::new(cx, |cx| {
         Label::new(cx, settings.export_type.to_string())
-            .color(theme.map(|theme| theme.text_primary))
+            .with_text_primary(theme)
             .font_size("x-small")
             .padding(Pixels(10.0));
 
@@ -98,13 +98,13 @@ fn show_video_details<T: Lens<Target = Theme>>(
                 .text_wrap(false)
                 .text_overflow(TextOverflow::Ellipsis);
             Label::new(cx, data.title())
-                .color(theme.map(|theme| theme.text_primary))
+                .with_text_primary(theme)
                 .font_size("x-small")
                 .width(Stretch(1.0))
                 .text_wrap(false)
                 .text_overflow(TextOverflow::Ellipsis);
             Label::new(cx, data.author())
-                .color(theme.map(|theme| theme.text_secondary))
+                .with_text_secondary(theme)
                 .font_size("x-small")
                 .width(Stretch(1.0))
                 .text_wrap(false)
@@ -113,7 +113,7 @@ fn show_video_details<T: Lens<Target = Theme>>(
             Spacer::new(cx);
 
             Label::new(cx, location.display().to_string())
-                .color(theme.map(|theme| theme.text_light))
+                .with_text_light(theme)
                 .font_size("x-small")
                 .width(Stretch(1.0))
                 .text_wrap(false)
@@ -129,7 +129,7 @@ fn show_video_details<T: Lens<Target = Theme>>(
     .alignment(Alignment::Center)
     .padding(Pixels(3.0))
     .overflow(Overflow::Hidden)
-    .background_color(theme.map(|theme| theme.background_dark))
+    .on_background_dark(theme)
     .round_box(theme);
 }
 
@@ -137,9 +137,61 @@ fn show_playlist_details<T: Lens<Target = Theme>>(
     cx: &mut Context,
     theme: T,
     data: &PlaylistData,
+    settings: &PlaylistExportSettings,
     location: &PathBuf,
     index: usize,
 ) {
+    HStack::new(cx, |cx| {
+        Label::new(cx, settings.export_type.to_string())
+            .with_text_primary(theme)
+            .font_size("x-small")
+            .padding(Pixels(10.0));
+
+        VStack::new(cx, |cx| {
+            Label::new(cx, &settings.title)
+                .color(theme.map(|theme| theme.primary))
+                .font_size("small")
+                .width(Stretch(1.0))
+                .text_wrap(false)
+                .text_overflow(TextOverflow::Ellipsis);
+            Label::new(cx, data.title())
+                .with_text_primary(theme)
+                .font_size("x-small")
+                .width(Stretch(1.0))
+                .text_wrap(false)
+                .text_overflow(TextOverflow::Ellipsis);
+            Label::new(cx, data.creator())
+                .with_text_secondary(theme)
+                .font_size("x-small")
+                .width(Stretch(1.0))
+                .text_wrap(false)
+                .text_overflow(TextOverflow::Ellipsis);
+
+            Spacer::new(cx);
+
+            Label::new(cx, location.display().to_string())
+                .with_text_light(theme)
+                .font_size("x-small")
+                .width(Stretch(1.0))
+                .text_wrap(false)
+                .text_overflow(TextOverflow::Ellipsis);
+        });
+
+        Label::new(cx, format!("{} Videos", data.active_video_count()))
+            .with_text_primary(theme)
+            .font_size("small");
+
+        Button::new(cx, |cx| Svg::new(cx, ICON_TRASH).fill("#ff0000"))
+            .round_box(theme)
+            .background_color("##ff64644d")
+            .on_press(move |ex| ex.emit(TaskEvent::Remove(index)));
+    })
+    .gap(Pixels(6.0))
+    .alignment(Alignment::Center)
+    .padding(Pixels(3.0))
+    .overflow(Overflow::Hidden)
+    .on_background_dark(theme)
+    .round_box(theme);
 }
 
 impl View for TaskView {

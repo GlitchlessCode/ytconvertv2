@@ -15,19 +15,19 @@ pub fn draw_export_settings(cx: &mut Context) {
             AppData::playlist_selected,
             |cx| {
                 HStack::new(cx, |cx| {
-                    Svg::new(cx, ICON_PLAYER_PLAY);
+                    Svg::new(cx, ICON_PLAYER_PLAY).fill(AppData::theme.map(|theme| theme.primary));
                     Label::new(cx, "Video")
                         .font_size("large")
-                        .color(AppData::theme.map(|theme| theme.text_primary));
+                        .with_text_primary(AppData::theme);
                 })
                 .alignment(Alignment::Center)
             },
             |cx| {
                 HStack::new(cx, |cx| {
-                    Svg::new(cx, ICON_LIST);
+                    Svg::new(cx, ICON_LIST).fill(AppData::theme.map(|theme| theme.primary));
                     Label::new(cx, "Playlist")
                         .font_size("large")
-                        .color(AppData::theme.map(|theme| theme.text_primary));
+                        .with_text_primary(AppData::theme);
                 })
                 .alignment(Alignment::Center)
             },
@@ -38,7 +38,7 @@ pub fn draw_export_settings(cx: &mut Context) {
         })
         .round_box(AppData::theme)
         .padding(Pixels(3.0))
-        .background_color(AppData::theme.map(|theme| theme.background_dark));
+        .on_background_dark(AppData::theme);
 
         let anim_out = cx.add_animation(
             AnimationBuilder::new()
@@ -86,6 +86,6 @@ pub fn draw_export_settings(cx: &mut Context) {
         ));
     })
     .round_box(AppData::theme)
-    .background_color(AppData::theme.map(|theme| theme.background_light))
+    .on_background_light(AppData::theme)
     .padding(Pixels(6.0));
 }

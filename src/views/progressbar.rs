@@ -1,3 +1,5 @@
+use crate::modifiers::ThemeModifiers;
+
 use super::*;
 
 pub struct CustomProgressBar {}
@@ -19,9 +21,8 @@ impl CustomProgressBar {
                         .background_color(theme.map(|theme| theme.primary));
                 });
             })
-            .border_color(theme.map(|theme| theme.border))
-            .border_width(Pixels(1.0))
-            .background_color(theme.map(|theme| theme.background_dark))
+            .with_border(theme)
+            .on_background_dark(theme)
     }
 }
 

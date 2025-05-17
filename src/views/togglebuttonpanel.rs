@@ -1,4 +1,4 @@
-use crate::modifiers::ViewModifiers;
+use crate::modifiers::{ThemeModifiers, ViewModifiers};
 
 use super::*;
 
@@ -19,7 +19,7 @@ impl ToggleButtonPanel {
                 ZStack::new(cx, |cx| {
                     Element::new(cx)
                         .round_box(theme)
-                        .background_color(theme.map(|theme| theme.background))
+                        .on_background(theme)
                         .width(Percentage(50.0))
                         .class("bg")
                         .toggle_class("right", toggled_right);

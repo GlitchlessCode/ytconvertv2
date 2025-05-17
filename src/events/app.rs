@@ -19,6 +19,11 @@ pub enum AppEvent {
     SubmitTask(Task),
     RemoveTask(usize),
 
+    // Toolbar Popups
+    SetShowAbout(bool),
+    SetShowSettings(bool),
+    SetShowLicense(bool),
+
     // Toggle button
     ToggleVideo,
     TogglePlaylist,

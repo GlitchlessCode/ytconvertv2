@@ -1,5 +1,7 @@
 // TODO - Split types into separate files
 
+use crate::modifiers::ThemeModifiers;
+
 use super::*;
 use bon::Builder;
 use std::collections::VecDeque;
@@ -206,7 +208,11 @@ impl NotificationPopups {
     }
 }
 
-impl View for NotificationPopups {}
+impl View for NotificationPopups {
+    fn element(&self) -> Option<&'static str> {
+        Some("notificationpopups")
+    }
+}
 
 pub enum NotificationServiceEvent {
     FinishAnimating,
@@ -253,7 +259,7 @@ impl NotificationView {
                     HStack::new(cx, |cx| {
                         Svg::new(cx, icon).class(&format!("{class}-svg")).z_index(2);
                         Label::new(cx, notification.message)
-                            .color(theme.map(|theme| theme.text_primary))
+                            .with_text_primary(theme)
                             .width(Stretch(1.0))
                             .text_overflow(TextOverflow::Ellipsis)
                             .z_index(2);
@@ -264,7 +270,7 @@ impl NotificationView {
                 })
                 .overflow(Overflow::Hidden)
                 .position_type(PositionType::Relative)
-                .background_color(theme.map(|theme| theme.background))
+                .on_background(theme)
                 .corner_radius(Pixels(18.0))
                 .border_color(color)
                 .border_width(Pixels(2.0));

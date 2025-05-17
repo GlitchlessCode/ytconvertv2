@@ -1,3 +1,6 @@
 # Added by cargo
 
 /target
+/Releases
+/ReleasePrep/
+.DS_Store

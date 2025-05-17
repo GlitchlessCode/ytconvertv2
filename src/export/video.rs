@@ -1,5 +1,5 @@
 use crate::{
-    data::{task::VideoData, VideoExportSettings},
+    data::{VideoData, VideoExportSettings},
     error::ErrorSeverity,
     helpers::parse_formatted_seconds,
 };
@@ -17,36 +17,40 @@ use youtube_dl::YoutubeDl;
 pub type Result<S> = std::result::Result<VideoExporter<S>, VideoExporterError>;
 
 #[derive(thiserror::Error, Debug)]
+/// Error emitted while exporting a video
 pub enum VideoExporterError {
     // Transparent
     #[error(transparent)]
+    /// A standard library IO error
     IOError(#[from] std::io::Error),
 
     #[error(transparent)]
+    /// An error emitted by yt-dlp
     YoutubeDlError(#[from] youtube_dl::Error),
 
     #[error(transparent)]
+    /// A generic anyhow error
     AnyhowError(#[from] anyhow::Error),
 
     // Custom
     #[error("temporary directory is either missing or is not a directory")]
+    /// Emitted when the temporary directory provided by temp_dir is not found
     TempDirMissing,
 
     #[error("file exported from yt-dlp is missing")]
+    /// Emitted when the file that should have been exported to the temporary directory is missing
     ExportMissing,
 
     #[error("there are multiple files that could be the target file from yt-dlp")]
+    /// Emitted when the temporary directory has multiple files with the same file stem that is expected
     AmbiguousTempFile,
 
     #[error("converting a `PathBuf` to str unexepectedly returned `None`")]
+    /// Emitted when a PathBuf cannot be converted to str
     InvalidPathBufStr,
 }
 
-pub enum VideoProgress {
-    Progress(f32),
-    Done,
-}
-
+// For ease of converting a VideoExporterError into an error that can be handled by the error manager
 impl From<VideoExporterError> for crate::error::Error {
     fn from(value: VideoExporterError) -> Self {
         let title = format!(
@@ -83,10 +87,18 @@ impl From<VideoExporterError> for crate::error::Error {
     }
 }
 
+/// Video processing progress, either a float from 0.0 to 1.0, or Done
+pub enum VideoProgress {
+    Progress(f32),
+    Done,
+}
+
+/// The state machine used for exporting a single video
 pub struct VideoExporter<S> {
     state: S,
 }
 
+// Bon builder to make a VideoExporter
 #[bon]
 impl VideoExporter<Unused> {
     #[builder]
@@ -109,6 +121,7 @@ impl VideoExporter<Unused> {
     }
 }
 
+/// First state, when the state machine is unused
 pub struct Unused {
     export_location: PathBuf,
     data: VideoData,
@@ -117,8 +130,10 @@ pub struct Unused {
     ffmpeg_progress: Box<dyn Fn(VideoProgress) + Send + Sync + 'static>,
 }
 
+// Fetch the video to a temporary directory
 impl VideoExporter<Unused> {
     pub fn fetch_video(self) -> Result<VideoFetched> {
+        // Unpack state
         let Unused {
             export_location,
             data,
@@ -127,6 +142,7 @@ impl VideoExporter<Unused> {
             ffmpeg_progress,
         } = self.state;
 
+        // Prep yt-dlp
         let mut ytdl = YoutubeDl::new(data.url());
 
         let name = nanoid!();
@@ -134,16 +150,21 @@ impl VideoExporter<Unused> {
         ytdl.youtube_dl_path(yt_dlp_path)
             .flat_playlist(true)
             .output_template(format!("{name}"))
-            .extra_arg("--no-playlist");
+            .extra_arg("--no-playlist")
+            .extra_arg("--ffmpeg-location")
+            .extra_arg(ffmpeg_sidecar::paths::ffmpeg_path().to_string_lossy());
 
         if settings.export_type.is_audio() {
             ytdl.format("ba");
         }
 
+        // Create temporary directory
         let temporary_dir = TempDir::new()?;
 
+        // Run yt-dlp
         ytdl.download_to(temporary_dir.path())?;
 
+        // Return new state
         Ok(VideoExporter {
             state: VideoFetched {
                 export_location,
@@ -157,6 +178,7 @@ impl VideoExporter<Unused> {
     }
 }
 
+/// Second state, once the video is fetched to the temporary directory
 pub struct VideoFetched {
     export_location: PathBuf,
     data: VideoData,
@@ -166,8 +188,10 @@ pub struct VideoFetched {
     id_name: String,
 }
 
+// Finds and grabs the exported video
 impl VideoExporter<VideoFetched> {
     pub fn grab_filepath(self) -> Result<PathGrabbed> {
+        // Unpack state
         let VideoFetched {
             export_location,
             data,
@@ -177,6 +201,7 @@ impl VideoExporter<VideoFetched> {
             id_name,
         } = self.state;
 
+        // Try to find the expected file
         let temp_dir_path = temporary_dir.path();
 
         let input_path = if temp_dir_path.is_dir() {
@@ -185,6 +210,7 @@ impl VideoExporter<VideoFetched> {
             return Err(VideoExporterError::TempDirMissing);
         };
 
+        // Return new state
         Ok(VideoExporter {
             state: PathGrabbed {
                 export_location,
@@ -202,30 +228,37 @@ fn match_file_stem(
     dir_path: &Path,
     target: String,
 ) -> std::result::Result<PathBuf, VideoExporterError> {
+    // Start with no file found
     let mut found: Option<PathBuf> = None;
 
+    // For each file in the directory
     for file in read_dir(dir_path)? {
         if let Ok(file) = file {
             if let Some(stem) = file.path().file_stem() {
+                // If the file doesn't match the search string, keep lookig
                 if &stem.to_string_lossy() != target.as_str() {
                     continue;
                 }
 
+                // Otherwise, if a different file has already been found, return an error
                 if found.is_some() {
                     return Err(VideoExporterError::AmbiguousTempFile);
                 }
 
+                // Otherwise, store this filepath
                 found = Some(file.path())
             }
         }
     }
 
+    // If no file was found, return an error
     match found {
         None => Err(VideoExporterError::ExportMissing),
         Some(found) => Ok(found),
     }
 }
 
+/// Third state, after the file has been grabbed
 pub struct PathGrabbed {
     export_location: PathBuf,
     data: VideoData,
@@ -235,8 +268,10 @@ pub struct PathGrabbed {
     input_path: PathBuf,
 }
 
+// Runs the fetched video through FFMPEG
 impl VideoExporter<PathGrabbed> {
     pub fn final_export(self) -> std::result::Result<(), VideoExporterError> {
+        // Unpack state
         let PathGrabbed {
             export_location,
             data,
@@ -246,6 +281,7 @@ impl VideoExporter<PathGrabbed> {
             input_path,
         } = self.state;
 
+        // Get input and output paths as strings
         let input_path = match input_path.to_str() {
             Some(path) => path,
             None => return Err(VideoExporterError::InvalidPathBufStr),
@@ -259,12 +295,14 @@ impl VideoExporter<PathGrabbed> {
             None => return Err(VideoExporterError::InvalidPathBufStr),
         };
 
+        // Prep ffmpeg
         let mut ffmpeg = ffmpeg_sidecar::command::FfmpegCommand::new()
             .input(input_path)
             .overwrite()
             .output(output_path)
             .spawn()?;
 
+        // Convert to iterator
         let steps = match ffmpeg.iter() {
             Ok(steps) => steps,
             Err(err) => {
@@ -276,6 +314,7 @@ impl VideoExporter<PathGrabbed> {
         let steps = steps
             .filter_map(|msg| match msg {
                 FfmpegEvent::Log(LogLevel::Info, info) => Some(info),
+                FfmpegEvent::Progress(progress) => Some(format!("time={}", progress.time)),
                 _ => None,
             })
             .filter_map(|info| {
@@ -293,7 +332,6 @@ impl VideoExporter<PathGrabbed> {
                 }
             }
         }
-        // TODO - Change ActiveTaskView to display yt_dlp processing, then ffmpeg progressbar, instead of conglomerated
 
         ffmpeg_progress(VideoProgress::Done);
 

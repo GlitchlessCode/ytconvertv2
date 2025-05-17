@@ -3,8 +3,9 @@ use super::*;
 use std::path::PathBuf;
 
 use crate::{
-    data::{task::VideoData, VideoExportSettings},
+    data::{VideoData, VideoExportSettings},
     events::AppVideoEvent,
+    helpers::{fetch_thumbnail, ContextProxyExt},
 };
 use reqwest::blocking::{Client, Response};
 use youtube_dl::{YoutubeDl, YoutubeDlOutput};
@@ -156,7 +157,11 @@ impl Model for AppVideoData {
             // Link should be https://i.ytimg.com/vi/<video_id>/mqdefault.jpg
             AppVideoEvent::FetchThumbnail(url) => {
                 let client = self.client.clone();
-                cx.spawn(move |cx| fetch_thumbnail(cx, client, url));
+                cx.spawn(move |cx| {
+                    fetch_thumbnail(cx, client, url, |cx, url, res| {
+                        cx.emit(AppVideoEvent::FinishedThumbnailFetch(url, res))
+                    })
+                });
             }
 
             AppVideoEvent::FinishedThumbnailFetch(link, res) => {
@@ -189,60 +194,5 @@ fn fetch_video_data(cx: &mut ContextProxy, url: String, yt_dlp: PathBuf) {
         None => AppVideoEvent::UrlFailed,
     };
 
-    if let Err(_) = cx.emit(event) {
-        eprintln!("Could not submit error event, failed to send event");
-    }
-}
-
-fn fetch_thumbnail(cx: &mut ContextProxy, client: Client, url: String) {
-    let request = match client.get(&url).build() {
-        Err(e) => {
-            let error = Error::new()
-                .title("Reqwest Request Builder Failed")
-                .code(200)
-                .description(format!(
-                    "Failed to create a build a Request due to the following error from reqwest: {e}"
-                ))
-                .severity(ErrorSeverity::Warning)
-                .build();
-
-            if let Err(_) = cx.emit(error) {
-                eprintln!("Could not submit error event, failed to send event");
-            }
-            return;
-        }
-        Ok(request) => request,
-    };
-
-    let res = match client.execute(request) {
-        Err(e) => {
-            let error = Error::new()
-                .title("Reqwest Request Execution Failed")
-                .code(201)
-                .description(format!(
-                    "Failed execute a built Request due to the following error from reqwest: {e}"
-                ))
-                .severity(ErrorSeverity::Warning)
-                .build();
-
-            if let Err(_) = cx.emit(error) {
-                eprintln!("Could not submit error event, failed to send event");
-            }
-            return;
-        }
-        Ok(response) => response,
-    };
-
-    if let Err(_) = cx.emit(AppVideoEvent::FinishedThumbnailFetch(url, res)) {
-        let error = Error::new()
-            .title("Event Emission Failure")
-            .code(3)
-            .description("Failed to emit an error to the context proxy while submitting an AppVideoEvent::FinishedThumbnailFetch event")
-            .severity(ErrorSeverity::Warning)
-            .build();
-
-        if let Err(_) = cx.emit(error) {
-            eprintln!("Could not submit error event, failed to send event");
-        }
-    }
+    cx.emit_print_err(event)
 }

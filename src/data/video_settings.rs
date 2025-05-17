@@ -1,6 +1,6 @@
-use crate::{events::VideoExportSettingsEvent, helpers::make_filename_valid};
-
 use super::*;
+
+use crate::{events::VideoExportSettingsEvent, helpers::make_filename_valid};
 
 #[derive(Lens, Data, Clone, PartialEq, Debug)]
 pub struct VideoExportSettings {

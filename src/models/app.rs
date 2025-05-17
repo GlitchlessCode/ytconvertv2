@@ -1,12 +1,21 @@
 use super::*;
 use crate::{
     config::ConfigEvent,
-    data::{task::TaskData, ActiveTask, FfmpegInstallState, Task, TaskQueue},
+    data::{
+        license::License, task::TaskData, update_settings::UpdateSettings, ActiveTask,
+        FfmpegInstallState, Task, TaskQueue,
+    },
     error::{Error, ErrorSeverity},
-    events::AppEvent,
-    export::video::{Unused, VideoExporter, VideoProgress},
+    events::{
+        update::{Update, UpdateTheme, UpdateUpdateSettings},
+        AppEvent, GlobalEvent, ToolbarEvent,
+    },
+    export::{
+        playlist::{PlaylistExporter, PlaylistProgress},
+        video::{VideoExporter, VideoProgress},
+    },
     helpers::ContextProxyExt,
-    views::task_queue::TaskEvent,
+    views::taskqueue::TaskEvent,
 };
 use rfd::FileDialog;
 use std::path::PathBuf;
@@ -23,8 +32,49 @@ pub struct AppData {
     pub yt_dlp_path: PathBuf,
     pub ffmpeg_install_state: FfmpegInstallState, // TODO - Display this
 
+    pub show_about: bool,
+
+    pub show_settings: bool,
+
+    pub show_licenses: bool,
+    pub licenses: Option<Vec<License>>,
+
+    pub update_settings: UpdateSettings,
+
     #[cfg(windows)]
     pub maximized: bool,
+}
+
+impl AppData {
+    fn update_theme(&mut self, cx: &mut EventContext, update: &UpdateTheme) {
+        match update {
+            UpdateTheme::Primary(color) => self.theme.primary = *color,
+            UpdateTheme::Border(color) => self.theme.border = *color,
+            UpdateTheme::TextPrimary(color) => self.theme.text_primary = *color,
+            UpdateTheme::TextSecondary(color) => self.theme.text_secondary = *color,
+            UpdateTheme::TextLight(color) => self.theme.text_light = *color,
+            UpdateTheme::Background(color) => self.theme.background = *color,
+            UpdateTheme::BackgroundDark(color) => self.theme.background_dark = *color,
+            UpdateTheme::BackgroundLight(color) => self.theme.background_light = *color,
+
+            UpdateTheme::DarkDefault => self.theme = Theme::dark(),
+            UpdateTheme::LightDefault => self.theme = Theme::light(),
+        }
+
+        cx.emit(ConfigEvent::SetTheme(self.theme.to_owned()));
+    }
+
+    fn update_update_settings(&mut self, cx: &mut EventContext, update: &UpdateUpdateSettings) {
+        match update {
+            UpdateUpdateSettings::ToggleAutoUpdates => {
+                self.update_settings.auto_update = !self.update_settings.auto_update
+            }
+        }
+
+        cx.emit(ConfigEvent::SetUpdateSettings(
+            self.update_settings.to_owned(),
+        ));
+    }
 }
 
 impl Model for AppData {
@@ -40,9 +90,7 @@ impl Model for AppData {
                         dialog = dialog.set_directory(path);
                     }
                     if let Some(path) = dialog.pick_folder() {
-                        if let Err(error) = cxp.emit(AppEvent::SetNewLocation(path)) {
-                            eprintln!("Could not emit new location request, context proxy event emission failed due to error: {error}")
-                        }
+                        cxp.emit_print_err(AppEvent::SetNewLocation(path));
                     }
                 });
             }
@@ -64,6 +112,18 @@ impl Model for AppData {
                 }
             }
 
+            AppEvent::SetShowAbout(state) => {
+                self.show_about = *state;
+            }
+
+            AppEvent::SetShowSettings(state) => {
+                self.show_settings = *state;
+            }
+
+            AppEvent::SetShowLicense(state) => {
+                self.show_licenses = *state;
+            }
+
             AppEvent::ToggleVideo => {
                 self.playlist_selected = false;
             }
@@ -80,7 +140,7 @@ impl Model for AppData {
             TaskEvent::Remove(index) => self.task_queue.remove(index),
             TaskEvent::SetActive(task) => {
                 if self.ffmpeg_install_state == FfmpegInstallState::Installed {
-                    self.active_task = Some(ActiveTask::new(task.clone()));
+                    self.active_task = Some(ActiveTask::new(&task));
                     let yt_dlp_path = self.yt_dlp_path.clone();
 
                     let executable = if cfg!(windows) {
@@ -145,8 +205,44 @@ impl Model for AppData {
         });
 
         event.map(|event, _meta| match event {
-            ConfigEvent::ConfigSetup { location } => {
+            ToolbarEvent::ShowAbout => cx.emit(AppEvent::SetShowAbout(true)),
+            ToolbarEvent::ShowSettings => cx.emit(AppEvent::SetShowSettings(true)),
+            ToolbarEvent::ShowLicense => cx.emit(AppEvent::SetShowLicense(true)),
+
+            ToolbarEvent::OpenDocumentationPage => {
+                if let Err(_) = open::that("https://github.com/GlitchlessCode/ytconvertv2/wiki") {
+                    eprintln!("Error opening url");
+                }
+            }
+            ToolbarEvent::OpenIssuesPage => {
+                if let Err(_) = open::that("https://github.com/GlitchlessCode/ytconvertv2/issues") {
+                    eprintln!("Error opening url");
+                }
+            }
+            _ => (),
+        });
+
+        event.map(|event, _meta| match event {
+            Update::Theme(update) => self.update_theme(cx, update),
+            Update::UpdateSettings(update) => self.update_update_settings(cx, update),
+
+            #[allow(unreachable_patterns)]
+            _ => (),
+        });
+
+        event.map(|event, _meta| match event {
+            ConfigEvent::ConfigSetup {
+                location,
+                theme,
+                update_settings,
+            } => {
                 self.current_location = location.to_owned();
+                self.theme = theme.to_owned();
+                self.update_settings = update_settings.to_owned();
+
+                if self.update_settings.auto_update {
+                    cx.emit(GlobalEvent::CheckForUpdates);
+                }
             }
             _ => (),
         });
@@ -159,7 +255,7 @@ fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf) {
         TaskData::Video(data, settings) => {
             let (tx, rx) = std::sync::mpsc::channel();
 
-            let mut active_task = ActiveTask::new(task.clone());
+            let mut active_task = ActiveTask::new(&task);
             active_task.set_downloading(false);
 
             cx.spawn(move |cx| {
@@ -187,24 +283,72 @@ fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf) {
                 .yt_dlp_path(yt_dlp_path)
                 .ffmpeg_progress(move |progress| {
                     if let Err(err) = tx.send(progress) {
-                        eprintln!("Failed to submit event to context proxy due to error: {err}");
+                        eprintln!("Failed to submit event to mpsc channel due to error: {err}");
                     }
                 })
                 .build();
 
             handle_video_task(cx, exporter, task.clone());
         }
-        TaskData::Playlist(data) => {
-            handle_playlist_task(cx);
+        TaskData::Playlist(data, settings) => {
+            let (tx, rx) = std::sync::mpsc::channel();
+
+            let mut active_task = ActiveTask::new(&task);
+
+            cx.spawn(move |cx| {
+                while let Ok(progress) = rx.recv() {
+                    match progress {
+                        PlaylistProgress::StartVideo(settings) => {
+                            active_task.set_downloading(true);
+                            active_task.set_video_progress(0.0);
+                            active_task.set_active_video(settings);
+                            cx.emit_print_err(TaskEvent::UpdateActive(active_task.clone()));
+                        }
+                        PlaylistProgress::VideoProgress(progress) => {
+                            active_task.set_downloading(false);
+                            active_task.set_video_progress(progress);
+                            cx.emit_print_err(TaskEvent::UpdateActive(active_task.clone()));
+                        }
+                        PlaylistProgress::VideoComplete(index) => {
+                            active_task.set_video_progress(1.0);
+                            active_task.set_finished_count(index + 1);
+                            cx.emit_print_err(TaskEvent::UpdateActive(active_task.clone()));
+                        }
+                        PlaylistProgress::Done => {
+                            break;
+                        }
+                    }
+                }
+
+                cx.emit_print_err(TaskEvent::FinishActive);
+            });
+
+            let exporter = PlaylistExporter::builder()
+                .export_location(export_location.to_owned())
+                .data(data.to_owned())
+                .settings(settings.to_owned())
+                .yt_dlp_path(yt_dlp_path)
+                .ffmpeg_progress(move |progress| {
+                    if let Err(err) = tx.send(progress) {
+                        eprintln!("Failed to submit event to mpsc channel due to error: {err}");
+                    }
+                })
+                .build();
+
+            handle_playlist_task(cx, exporter);
         }
     }
 }
 
-fn handle_video_task(cx: &mut ContextProxy, exporter: VideoExporter<Unused>, task: Task) {
+fn handle_video_task(
+    cx: &mut ContextProxy,
+    exporter: VideoExporter<crate::export::video::Unused>,
+    task: Task,
+) {
     let result = exporter
         .fetch_video()
         .inspect(|_| {
-            let mut active_task = ActiveTask::new(task);
+            let mut active_task = ActiveTask::new(&task);
             active_task.set_downloading(false);
             cx.emit_print_err(TaskEvent::UpdateActive(active_task));
         })
@@ -216,6 +360,13 @@ fn handle_video_task(cx: &mut ContextProxy, exporter: VideoExporter<Unused>, tas
     }
 }
 
-fn handle_playlist_task(cx: &mut ContextProxy) {
-    todo!();
+fn handle_playlist_task(
+    cx: &mut ContextProxy,
+    exporter: PlaylistExporter<crate::export::playlist::Unused>,
+) {
+    let result = exporter.process_videos();
+
+    if let Err(err) = result {
+        cx.emit_print_err(Error::from(err));
+    }
 }

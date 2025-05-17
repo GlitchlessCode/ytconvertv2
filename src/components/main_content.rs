@@ -5,7 +5,7 @@ use ytconvertv2::{
     error::{Error, ErrorSeverity},
     events::AppEvent,
     helpers::{format_seconds, labelled},
-    modifiers::ViewModifiers,
+    modifiers::{ThemeModifiers, ViewModifiers},
 };
 
 mod draw_export_settings;
@@ -13,6 +13,10 @@ mod draw_export_settings;
 pub fn main_content(cx: &mut Context) {
     // Main Toolbar
     Toolbar::new(cx, AppData::theme).on_exit(|ex| ex.emit(WindowEvent::WindowClose));
+
+    AppData::theme
+        .map(|theme| theme.primary)
+        .view(cx.data().unwrap_or_else(|| panic!()));
 
     // Sub tool stack
     HStack::new(cx, |cx| {
@@ -31,12 +35,13 @@ pub fn main_content(cx: &mut Context) {
                             }),
                         )
                         .padding(Pixels(6.0))
-                        .color(AppData::theme.map(|theme| theme.text_primary));
+                        .with_text_primary(AppData::theme);
                     })
                     .width(Stretch(1.0))
                     .show_horizontal_scrollbar(true);
 
                     Button::new(cx, |cx| Svg::new(cx, ICON_FOLDER))
+                        .fill(AppData::theme.map(|theme| theme.background_dark))
                         .alignment(Alignment::Center)
                         .background_color(AppData::theme.map(|theme| theme.primary))
                         .on_press(|ex| ex.emit(AppEvent::RequestLocationChange));
@@ -44,7 +49,7 @@ pub fn main_content(cx: &mut Context) {
                 .alignment(Alignment::Left)
                 .height(Units::Auto)
                 .round_box(AppData::theme)
-                .background_color(AppData::theme.map(|theme| theme.background_dark));
+                .on_background_dark(AppData::theme);
             })
             .height(Auto);
 
@@ -60,7 +65,7 @@ pub fn main_content(cx: &mut Context) {
             labelled(cx, AppData::theme, "Tasks", |cx| {
                 TaskQueueView::new(cx, AppData::theme, AppData::task_queue)
                     .round_box(AppData::theme)
-                    .background_color(AppData::theme.map(|theme| theme.background_light));
+                    .on_background_light(AppData::theme);
             })
             .height(Stretch(1.0));
 
@@ -69,7 +74,7 @@ pub fn main_content(cx: &mut Context) {
             })
             .round_box(AppData::theme)
             .height(Pixels(120.0))
-            .background_color(AppData::theme.map(|theme| theme.background_light));
+            .on_background_light(AppData::theme);
         })
         .gap(Pixels(6.0))
         .width(Pixels(320.0));

@@ -1,10 +1,12 @@
 use vizia::icons::{
-    ICON_ALERT_HEXAGON_FILLED, ICON_BUG_FILLED, ICON_FILE, ICON_LICENSE, ICON_QUESTION_MARK, ICON_X,
+    ICON_ALERT_HEXAGON_FILLED, ICON_BUG_FILLED, ICON_FILE, ICON_LICENSE, ICON_QUESTION_MARK,
+    ICON_SETTINGS, ICON_X,
 };
 
 use crate::{
     error::{ErrorManager, ErrorManagerEvent},
-    modifiers::menu::MenuStyleModifier,
+    events::ToolbarEvent,
+    modifiers::{menu::MenuStyleModifier, ThemeModifiers, ViewModifiers},
 };
 
 use super::*;
@@ -40,22 +42,17 @@ impl Toolbar {
             .build(cx, |cx| {
                 HStack::new(cx, |cx| {
                     MenuBar::new(cx, |cx| {
-                        Submenu::new(cx, |cx| Label::new(cx, "File"), |cx| {})
-                            .color(theme.map(|theme| theme.text_primary))
-                            .class("menubutton");
-                        Submenu::new(cx, |cx| Label::new(cx, "View"), |cx| {})
-                            .color(theme.map(|theme| theme.text_primary))
-                            .class("menubutton");
                         Submenu::new(
                             cx,
-                            |cx| Label::new(cx, "Help"),
+                            move |cx| Label::new(cx, "ytconvertv2").with_text_primary(theme),
                             move |cx| {
                                 MenuButton::new(
                                     cx,
                                     |ex| ex.emit(ToolbarEvent::ShowAbout),
-                                    |cx| {
+                                    move |cx| {
                                         HStack::new(cx, |cx| {
-                                            Svg::new(cx, ICON_QUESTION_MARK);
+                                            Svg::new(cx, ICON_QUESTION_MARK)
+                                                .fill(theme.map(|theme| theme.primary));
                                             Label::new(cx, "About");
                                         })
                                         .class("inner")
@@ -68,10 +65,54 @@ impl Toolbar {
 
                                 MenuButton::new(
                                     cx,
-                                    |ex| ex.emit(ToolbarEvent::OpenIssuesPage),
-                                    |cx| {
+                                    |ex| ex.emit(ToolbarEvent::ShowSettings),
+                                    move |cx| {
                                         HStack::new(cx, |cx| {
-                                            Svg::new(cx, ICON_BUG_FILLED);
+                                            Svg::new(cx, ICON_SETTINGS)
+                                                .fill(theme.map(|theme| theme.primary));
+                                            Label::new(cx, "Settings");
+                                        })
+                                        .class("inner")
+                                        .corner_radius(Pixels(3.0))
+                                    },
+                                )
+                                .padding(Pixels(0.0))
+                                .default_menu_style(theme);
+
+                                MenuButton::new(
+                                    cx,
+                                    |ex| ex.emit(ToolbarEvent::ShowLicense),
+                                    move |cx| {
+                                        HStack::new(cx, |cx| {
+                                            Svg::new(cx, ICON_LICENSE)
+                                                .fill(theme.map(|theme| theme.primary));
+                                            Label::new(cx, "Licenses");
+                                        })
+                                        .class("inner")
+                                        .corner_radius(Pixels(3.0))
+                                    },
+                                )
+                                .padding(Pixels(0.0))
+                                .default_menu_style(theme)
+                                .round_bottom(Pixels(3.0));
+                            },
+                        )
+                        .with_text_primary(theme)
+                        .class("menubutton");
+                        // Submenu::new(cx, move |cx| Label::new(cx, "View").with_text_primary(theme), |cx| {})
+                        //     .with_text_primary(theme)
+                        //     .class("menubutton");
+                        Submenu::new(
+                            cx,
+                            move |cx| Label::new(cx, "Help").with_text_primary(theme),
+                            move |cx| {
+                                MenuButton::new(
+                                    cx,
+                                    |ex| ex.emit(ToolbarEvent::OpenIssuesPage),
+                                    move |cx| {
+                                        HStack::new(cx, |cx| {
+                                            Svg::new(cx, ICON_BUG_FILLED)
+                                                .fill(theme.map(|theme| theme.primary));
                                             Label::new(cx, "Report Bugs");
                                         })
                                         .class("inner")
@@ -84,9 +125,10 @@ impl Toolbar {
                                 MenuButton::new(
                                     cx,
                                     |ex| ex.emit(ToolbarEvent::OpenDocumentationPage),
-                                    |cx| {
+                                    move |cx| {
                                         HStack::new(cx, |cx| {
-                                            Svg::new(cx, ICON_FILE);
+                                            Svg::new(cx, ICON_FILE)
+                                                .fill(theme.map(|theme| theme.primary));
                                             Label::new(cx, "Documentation");
                                         })
                                         .class("inner")
@@ -95,25 +137,9 @@ impl Toolbar {
                                 )
                                 .padding(Pixels(0.0))
                                 .default_menu_style(theme);
-
-                                MenuButton::new(
-                                    cx,
-                                    |ex| ex.emit(ToolbarEvent::ShowLicense),
-                                    |cx| {
-                                        HStack::new(cx, |cx| {
-                                            Svg::new(cx, ICON_LICENSE);
-                                            Label::new(cx, "Licenses");
-                                        })
-                                        .class("inner")
-                                        .corner_radius(Pixels(3.0))
-                                    },
-                                )
-                                .padding(Pixels(0.0))
-                                .default_menu_style(theme)
-                                .round_bottom(Pixels(3.0));
                             },
                         )
-                        .color(theme.map(|theme| theme.text_primary))
+                        .with_text_primary(theme)
                         .class("menubutton");
                     })
                     .alignment(Alignment::Left)
@@ -156,23 +182,10 @@ impl Toolbar {
             })
             .width(Percentage(100.0))
             .height(Pixels(32.0))
-            .background_color(theme.map(|theme| theme.background_dark))
-            .border_width(Pixels(1.0))
-            .border_color(theme.map(|theme| theme.border))
-            .corner_radius(Pixels(4.0))
+            .on_background_dark(theme)
+            .round_box(theme)
             .on_press_down(|ex| ex.emit(WindowEvent::DragWindow))
     }
-}
-
-pub enum ToolbarEvent {
-    // Help
-    ShowAbout,
-    OpenIssuesPage,
-    OpenDocumentationPage,
-    ShowLicense,
-
-    // Exit
-    ExitApp,
 }
 
 pub trait ToolbarModifers {

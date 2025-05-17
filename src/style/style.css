@@ -3,14 +3,6 @@
     font-family: Quicksand;
 }
 
-.toolbar menubar svg {
-    fill: gold;
-}
-
-.std-btn svg {
-    fill: gold;
-}
-
 button.std-btn {
     background-color: transparent;
     transition: background-color 125ms;
@@ -115,10 +107,6 @@ togglebuttonpanel .bg.right {
     transition: left 250ms cubic-bezier(0.023, 0.669, 0.332, 0.992);
 }
 
-togglebuttonpanel svg {
-    fill: gold;
-}
-
 textbox:checked.caret {
     caret-color: gold;
 }
@@ -200,4 +188,66 @@ textbox:checked.caret {
 
 .dropdown-btn:active {
     background-color: #44444444;
+}
+
+/* Collapsible */
+
+collapsible > .header {
+    gap: 1s;
+    min-gap: 16px;
+    height: 32px;
+    alignment: left;
+    padding-left: 10px;
+    padding-right: 10px;
+    background-color: transparent;
+    transition: height 300ms;
+    transition: background-color 100ms;
+}
+
+collapsible > .header:hover {
+    background-color: #77777722;
+    transition: background-color 100ms;
+}
+
+collapsible.open > .header {
+    height: 40px;
+    background-color: #77777777;
+    transition: height 300ms;
+    transition: background-color 100ms;
+}
+
+collapsible > .header > .expand-icon {
+    size: 20px;
+    rotate: 0deg;
+    transition: rotate 300ms;
+}
+
+collapsible.open > .header > .expand-icon {
+    rotate: 180deg;
+    transition: rotate 300ms;
+}
+
+collapsible .content {
+    height: auto;
+    max-height: 0px;
+    overflow: hidden;
+    transition: max-height 300ms;
+    padding: 10px;
+    gap: 16px;
+}
+
+collapsible.open .content {
+    width: 1s;
+    height: auto;
+    max-height: auto;
+    transition: max-height 300ms;
+}
+
+/* Scroll */
+.scroll-gap scroll-content {
+    gap: 6px;
+}
+
+scrollbar.vertical .thumb {
+    min-height: 40px;
 }

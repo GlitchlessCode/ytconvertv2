@@ -13,18 +13,20 @@ pub fn video_settings(cx: &mut Context) {
                 .disabled(AppVideoData::searching)
                 .text_overflow(TextOverflow::Ellipsis)
                 .round_box(AppData::theme)
-                .background_color(AppData::theme.map(|theme| theme.background_dark))
-                .color(AppData::theme.map(|theme| theme.text_primary))
+                .on_background_dark(AppData::theme)
+                .with_text_primary(AppData::theme)
                 .width(Stretch(1.0))
                 .on_submit(move |ex, text, _| {
                     ex.emit(AppVideoEvent::LinkSubmit(text));
                     ex.focus_next();
                 });
 
-            Button::new(cx, |cx| Svg::new(cx, ICON_RELOAD))
-                .disabled(AppVideoData::searching)
-                .class("std-btn")
-                .on_press(|ex| ex.emit(AppVideoEvent::Reset));
+            Button::new(cx, |cx| {
+                Svg::new(cx, ICON_RELOAD).fill(AppData::theme.map(|theme| theme.primary))
+            })
+            .disabled(AppVideoData::searching)
+            .class("std-btn")
+            .on_press(|ex| ex.emit(AppVideoEvent::Reset));
         })
         .height(Auto)
         .gap(Pixels(6.0))
@@ -41,8 +43,7 @@ pub fn video_settings(cx: &mut Context) {
                     Image::new(cx, "video_thumb")
                         .class("thumbnail-img")
                         .corner_radius(Pixels(8.0))
-                        .border_width(Pixels(1.0))
-                        .border_color(AppData::theme.map(|theme| theme.border));
+                        .with_border(AppData::theme);
                 })
                 .set_anim_in(AnimationDef::new(
                     fade_in,
@@ -89,7 +90,7 @@ pub fn video_settings(cx: &mut Context) {
                 .width(Stretch(1.0))
                 .text_wrap(false)
                 .text_overflow(TextOverflow::Ellipsis)
-                .color(AppData::theme.map(|theme| theme.text_primary));
+                .with_text_primary(AppData::theme);
                 Label::new(
                     cx,
                     AppVideoData::video.map(|video| {
@@ -101,7 +102,7 @@ pub fn video_settings(cx: &mut Context) {
                     }),
                 )
                 .font_size("small")
-                .color(AppData::theme.map(|theme| theme.text_primary));
+                .with_text_primary(AppData::theme);
             });
         })
         .overflowx(Overflow::Hidden)
@@ -117,7 +118,7 @@ pub fn video_settings(cx: &mut Context) {
             } else {
                 VStack::new(cx, |cx| {
                     Label::new(cx, "No video selected...")
-                        .color(AppData::theme.map(|theme| theme.text_light))
+                        .with_text_light(AppData::theme)
                         .font_size("small");
                 })
                 .alignment(Alignment::Center)
@@ -133,7 +134,7 @@ fn video_export_settings(cx: &mut Context) {
     HStack::new(cx, |cx| {
         Label::new(cx, "File Name")
             .font_size("small")
-            .color(AppData::theme.map(|theme| theme.text_secondary));
+            .with_text_secondary(AppData::theme);
 
         Textbox::new(
             cx,
@@ -142,8 +143,8 @@ fn video_export_settings(cx: &mut Context) {
         .text_wrap(false)
         .text_overflow(TextOverflow::Ellipsis)
         .width(Stretch(1.0))
-        .background_color(AppData::theme.map(|theme| theme.background_dark))
-        .color(AppData::theme.map(|theme| theme.text_primary))
+        .on_background_dark(AppData::theme)
+        .with_text_primary(AppData::theme)
         .round_box(AppData::theme)
         .on_submit(|ex, state, _| {
             ex.emit(AppVideoEvent::ExportSettingsEvent(
@@ -158,7 +159,7 @@ fn video_export_settings(cx: &mut Context) {
     HStack::new(cx, |cx| {
         Label::new(cx, "Format")
             .font_size("small")
-            .color(AppData::theme.map(|theme| theme.text_secondary));
+            .with_text_secondary(AppData::theme);
 
         ToggleButtonPanel::new(
             cx,
@@ -169,13 +170,13 @@ fn video_export_settings(cx: &mut Context) {
                     ExportType::Audio(_) => false,
                     ExportType::Video(_) => true,
                 }),
-            |cx| Label::new(cx, "Audio").color(AppData::theme.map(|theme| theme.text_primary)),
-            |cx| Label::new(cx, "Video").color(AppData::theme.map(|theme| theme.text_primary)),
+            |cx| Label::new(cx, "Audio").with_text_primary(AppData::theme),
+            |cx| Label::new(cx, "Video").with_text_primary(AppData::theme),
         )
         .width(Stretch(2.0))
         .padding(Pixels(3.0))
         .round_box(AppData::theme)
-        .background_color(AppData::theme.map(|theme| theme.background_dark))
+        .on_background_dark(AppData::theme)
         .on_choose(|ex, choice| match choice {
             ToggleButtonChoice::Left => ex.emit(AppVideoEvent::ExportSettingsEvent(
                 VideoExportSettingsEvent::SetToVideo(false),
@@ -195,10 +196,10 @@ fn video_export_settings(cx: &mut Context) {
                             .then(VideoExportSettings::export_type)
                             .map(|export_type| export_type.to_string()),
                     )
-                    .color(AppData::theme.map(|theme| theme.text_primary))
+                    .with_text_primary(AppData::theme)
                 })
                 .round_box(AppData::theme)
-                .background_color(AppData::theme.map(|theme| theme.background_dark))
+                .on_background_dark(AppData::theme)
                 .on_press(|ex| ex.emit(PopupEvent::Open));
             },
             |cx| {
@@ -248,7 +249,7 @@ fn video_export_settings(cx: &mut Context) {
 
             Element::new(cx)
                 .position_type(PositionType::Absolute)
-                .background_color(AppData::theme.map(|theme| theme.background_dark))
+                .on_background_dark(AppData::theme)
                 .class("task-submit-btn-panel")
                 .left(Pixels(0.0))
                 .top(Pixels(0.0))
@@ -265,7 +266,7 @@ fn video_export_settings(cx: &mut Context) {
     .round_box(AppData::theme)
     .padding(Pixels(0.0))
     .top(Pixels(12.0))
-    .background_color(AppData::theme.map(|theme| theme.background_dark))
+    .on_background_dark(AppData::theme)
     .class("task-submit-btn")
     .pointer_events(true)
     .on_press(|ex| {
