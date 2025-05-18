@@ -48,6 +48,12 @@ jobs:
     # build-windows:
     #     runs-on: windows-latest
     #     steps:
+    #       - name: Grab Version Tag
+    #         uses: nowsprinting/check-version-format-action@v3
+    #         id: version
+    #         with:
+    #             prefix: 'v'
+
     #       - name: Checkout code
     #         uses: actions/checkout@v4
 
@@ -56,10 +62,22 @@ jobs:
     #         with:
     #             toolchain: 1.84
         
+    #       - name: Install DotNet SDK
+    #         uses: actions/setup-dotnet@v4
+    #         with:
+    #             dotnet-version: 8.0.x
+        
     #       - name: Build for release
     #         run: cargo build --release
 
     #       - name: Prep for packaging
-    #         run: mkdir .\PrepRelease\
-    #       - run: mv .\target\release\ytconvertv2.exe .\PrepRelease\ytconvertv2.exe
+    #         run: |
+    #             mkdir .\PrepRelease\
+    #             mv .\target\release\ytconvertv2.exe .\PrepRelease\ytconvertv2.exe
+
+    #       - name: Run Velopack
+    #         run: |
+    #             dotnet tool install -g vpk
+    #             vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p .\PrepRelease\ -e ytconvertv2.exe --delta None
+    #             vpk upload github -o .\Releases\ --repoUrl https://github.com/${{ github.repository }} --pre --merge --token ${{ secrets.GITHUB_TOKEN }}
                 
