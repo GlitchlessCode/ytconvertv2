@@ -37,7 +37,7 @@ jobs:
           - name: Prep For Packaging
             run: |
                 mkdir ./PrepRelease/
-                mv ./target/release/ytconvertv2 ./PrepRelease/ytconvertv2
+                cp ./target/release/ytconvertv2 ./PrepRelease/
 
           - name: Run Velopack
             run: |
