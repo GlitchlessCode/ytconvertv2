@@ -1,0 +1,65 @@
+name: Build and Release
+
+permissions:
+  contents: write
+
+on:
+    push:
+        tags:
+            - v*.*.*
+
+jobs:
+    build-mac:
+        runs-on: macos-13
+        steps:
+          - name: Grab Version Tag
+            uses: nowsprinting/check-version-format-action@v3
+            id: version
+            with:
+                prefix: 'v'
+
+          - name: Checkout Code
+            uses: actions/checkout@v4
+
+          - name: Install Rust Toolchain
+            uses: actions-rs/toolchain@v1.0.6
+            with:
+                toolchain: 1.84
+
+          - name: Install DotNet SDK
+            uses: actions/setup-dotnet@v4
+            with:
+                dotnet-version: 8.0.x
+
+          - name: Build Release Binary
+            run: cargo build --release
+
+          - name: Prep For Packaging
+            run: |
+                mkdir ./PrepRelease/
+                mv ./target/release/ytconvertv2 ./PrepRelease/ytconvertv2
+
+          - name: Run Velopack
+            run: |
+                dotnet tool install -g vpk
+                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 --delta None --noInst
+                vpk upload github -o ./Releases/ --repoUrl https://github.com/${{ github.repository }} --pre --merge
+
+    # build-windows:
+    #     runs-on: windows-latest
+    #     steps:
+    #       - name: Checkout code
+    #         uses: actions/checkout@v4
+
+    #       - name: Install Rust Toolchain
+    #         uses: actions-rs/toolchain@v1.0.6
+    #         with:
+    #             toolchain: 1.84
+        
+    #       - name: Build for release
+    #         run: cargo build --release
+
+    #       - name: Prep for packaging
+    #         run: mkdir .\PrepRelease\
+    #       - run: mv .\target\release\ytconvertv2.exe .\PrepRelease\ytconvertv2.exe
+                
