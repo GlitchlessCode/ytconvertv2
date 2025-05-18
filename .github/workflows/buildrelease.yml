@@ -39,15 +39,10 @@ jobs:
                 mkdir ./PrepRelease/
                 cp ./target/release/ytconvertv2 ./PrepRelease/
 
-          - name: Debug
-            run: |
-                ls
-                ls ./PrepRelease/
-
           - name: Run Velopack
             run: |
                 dotnet tool install -g vpk
-                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 --delta None --noInst
+                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./PrepRelease/ -e ytconvertv2 --delta None --noInst
                 vpk upload github -o ./Releases/ --repoUrl https://github.com/${{ github.repository }} --pre --merge
 
     # build-windows:
