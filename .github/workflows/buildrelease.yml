@@ -39,6 +39,11 @@ jobs:
                 mkdir ./PrepRelease/
                 cp ./target/release/ytconvertv2 ./PrepRelease/
 
+          - name: Debug
+            run: |
+                ls
+                ls ./PrepRelease/
+
           - name: Run Velopack
             run: |
                 dotnet tool install -g vpk
