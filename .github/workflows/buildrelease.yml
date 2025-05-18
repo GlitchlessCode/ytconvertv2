@@ -43,7 +43,7 @@ jobs:
             run: |
                 dotnet tool install -g vpk
                 vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./PrepRelease/ -e ytconvertv2 --delta None --noInst
-                vpk upload github -o ./Releases/ --repoUrl https://github.com/${{ github.repository }} --pre --merge
+                vpk upload github -o ./Releases/ --repoUrl https://github.com/${{ github.repository }} --pre --merge --token ${{ secrets.GITHUB_TOKEN }}
 
     # build-windows:
     #     runs-on: windows-latest
