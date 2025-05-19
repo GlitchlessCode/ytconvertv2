@@ -94,6 +94,7 @@ fn main() -> Result<(), ApplicationError> {
 
             current_location: None,
             yt_dlp_path: dependency_dir.clone().join("ytdlp"),
+            ffmpeg_path: dependency_dir.clone().join("ffmpeg"),
             ffmpeg_install_state: FfmpegInstallState::Unknown,
 
             show_about: false,

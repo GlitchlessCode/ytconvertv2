@@ -30,6 +30,7 @@ pub struct AppData {
 
     pub current_location: Option<PathBuf>,
     pub yt_dlp_path: PathBuf,
+    pub ffmpeg_path: PathBuf,
     pub ffmpeg_install_state: FfmpegInstallState, // TODO - Display this
 
     pub show_about: bool,
@@ -142,14 +143,22 @@ impl Model for AppData {
                 if self.ffmpeg_install_state == FfmpegInstallState::Installed {
                     self.active_task = Some(ActiveTask::new(&task));
                     let yt_dlp_path = self.yt_dlp_path.clone();
+                    let ffmpeg_path = self.ffmpeg_path.clone();
 
-                    let executable = if cfg!(windows) {
-                        "yt-dlp.exe"
+                    let (yt_dlp_exec, ffmpeg_exec) = if cfg!(windows) {
+                        ("yt-dlp.exe", "ffmpeg.exe")
                     } else {
-                        "yt-dlp"
+                        ("yt-dlp", "ffmpeg")
                     };
 
-                    cx.spawn(move |cx| handle_task(cx, task, yt_dlp_path.join(executable)));
+                    cx.spawn(move |cx| {
+                        handle_task(
+                            cx,
+                            task,
+                            yt_dlp_path.join(yt_dlp_exec),
+                            ffmpeg_path.join(ffmpeg_exec),
+                        )
+                    });
                 } else if self.ffmpeg_install_state == FfmpegInstallState::Installing
                     || self.ffmpeg_install_state == FfmpegInstallState::Updating
                 {
@@ -249,7 +258,7 @@ impl Model for AppData {
     }
 }
 
-fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf) {
+fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf, ffmpeg_path: PathBuf) {
     let export_location = task.location();
     match task.data() {
         TaskData::Video(data, settings) => {
@@ -281,6 +290,7 @@ fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf) {
                 .data(data.to_owned())
                 .settings(settings.to_owned())
                 .yt_dlp_path(yt_dlp_path)
+                .ffmpeg_path(ffmpeg_path)
                 .ffmpeg_progress(move |progress| {
                     if let Err(err) = tx.send(progress) {
                         eprintln!("Failed to submit event to mpsc channel due to error: {err}");
@@ -328,6 +338,7 @@ fn handle_task(cx: &mut ContextProxy, task: Task, yt_dlp_path: PathBuf) {
                 .data(data.to_owned())
                 .settings(settings.to_owned())
                 .yt_dlp_path(yt_dlp_path)
+                .ffmpeg_path(ffmpeg_path)
                 .ffmpeg_progress(move |progress| {
                     if let Err(err) = tx.send(progress) {
                         eprintln!("Failed to submit event to mpsc channel due to error: {err}");

@@ -50,6 +50,7 @@ impl PlaylistExporter<Unused> {
         data: PlaylistData,
         settings: PlaylistExportSettings,
         #[builder(into)] yt_dlp_path: PathBuf,
+        #[builder(into)] ffmpeg_path: PathBuf,
         ffmpeg_progress: F,
     ) -> PlaylistExporter<Unused> {
         PlaylistExporter {
@@ -58,6 +59,7 @@ impl PlaylistExporter<Unused> {
                 data,
                 settings,
                 yt_dlp_path,
+                ffmpeg_path,
                 ffmpeg_progress: Arc::new(ffmpeg_progress),
             },
         }
@@ -69,6 +71,7 @@ pub struct Unused {
     data: PlaylistData,
     settings: PlaylistExportSettings,
     yt_dlp_path: PathBuf,
+    ffmpeg_path: PathBuf,
     ffmpeg_progress: Arc<dyn Fn(PlaylistProgress) + Send + Sync + 'static>,
 }
 
@@ -79,6 +82,7 @@ impl PlaylistExporter<Unused> {
             data,
             settings,
             yt_dlp_path,
+            ffmpeg_path,
             ffmpeg_progress,
         } = self.state;
 
@@ -105,6 +109,7 @@ impl PlaylistExporter<Unused> {
                 })
                 .settings(settings.to_video_setting(export_type.clone()))
                 .yt_dlp_path(yt_dlp_path.clone())
+                .ffmpeg_path(ffmpeg_path.clone())
                 .build();
 
             exporter.fetch_video()?.grab_filepath()?.final_export()?;

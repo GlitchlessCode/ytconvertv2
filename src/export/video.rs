@@ -107,6 +107,7 @@ impl VideoExporter<Unused> {
         data: VideoData,
         settings: VideoExportSettings,
         #[builder(into)] yt_dlp_path: PathBuf,
+        #[builder(into)] ffmpeg_path: PathBuf,
         ffmpeg_progress: F,
     ) -> VideoExporter<Unused> {
         VideoExporter {
@@ -115,6 +116,7 @@ impl VideoExporter<Unused> {
                 data,
                 settings,
                 yt_dlp_path,
+                ffmpeg_path,
                 ffmpeg_progress: Box::new(ffmpeg_progress),
             },
         }
@@ -127,6 +129,7 @@ pub struct Unused {
     data: VideoData,
     settings: VideoExportSettings,
     yt_dlp_path: PathBuf,
+    ffmpeg_path: PathBuf,
     ffmpeg_progress: Box<dyn Fn(VideoProgress) + Send + Sync + 'static>,
 }
 
@@ -139,6 +142,7 @@ impl VideoExporter<Unused> {
             data,
             settings,
             yt_dlp_path,
+            ffmpeg_path,
             ffmpeg_progress,
         } = self.state;
 
@@ -170,6 +174,7 @@ impl VideoExporter<Unused> {
                 export_location,
                 data,
                 settings,
+                ffmpeg_path,
                 ffmpeg_progress,
                 temporary_dir,
                 id_name: name,
@@ -183,6 +188,7 @@ pub struct VideoFetched {
     export_location: PathBuf,
     data: VideoData,
     settings: VideoExportSettings,
+    ffmpeg_path: PathBuf,
     ffmpeg_progress: Box<dyn Fn(VideoProgress) + Send + Sync + 'static>,
     temporary_dir: TempDir,
     id_name: String,
@@ -196,6 +202,7 @@ impl VideoExporter<VideoFetched> {
             export_location,
             data,
             settings,
+            ffmpeg_path,
             ffmpeg_progress,
             temporary_dir,
             id_name,
@@ -216,6 +223,7 @@ impl VideoExporter<VideoFetched> {
                 export_location,
                 data,
                 settings,
+                ffmpeg_path,
                 ffmpeg_progress,
                 temporary_dir,
                 input_path,
@@ -263,6 +271,7 @@ pub struct PathGrabbed {
     export_location: PathBuf,
     data: VideoData,
     settings: VideoExportSettings,
+    ffmpeg_path: PathBuf,
     ffmpeg_progress: Box<dyn Fn(VideoProgress) + Send + Sync + 'static>,
     temporary_dir: TempDir,
     input_path: PathBuf,
@@ -276,6 +285,7 @@ impl VideoExporter<PathGrabbed> {
             export_location,
             data,
             settings,
+            ffmpeg_path,
             ffmpeg_progress,
             temporary_dir,
             input_path,
@@ -296,7 +306,7 @@ impl VideoExporter<PathGrabbed> {
         };
 
         // Prep ffmpeg
-        let mut ffmpeg = ffmpeg_sidecar::command::FfmpegCommand::new()
+        let mut ffmpeg = ffmpeg_sidecar::command::FfmpegCommand::new_with_path(ffmpeg_path)
             .input(input_path)
             .overwrite()
             .output(output_path)
