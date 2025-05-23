@@ -20,6 +20,11 @@ use ytconvertv2::{
     views::all::*,
 };
 
+#[cfg(windows)]
+use ytconvertv2::events::AppEvent;
+#[cfg(windows)]
+use ytconvertv2::helpers::ContextProxyExt;
+
 mod components;
 mod velopack_updates;
 
