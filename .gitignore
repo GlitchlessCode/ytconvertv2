@@ -1,6 +1,8 @@
 # Added by cargo
 
 /target
-/Releases
+/Releases/
 /ReleasePrep/
+/PythonPrep/
+/Bundle/
 .DS_Store

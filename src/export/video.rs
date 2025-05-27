@@ -166,6 +166,9 @@ impl VideoExporter<Unused> {
         let temporary_dir = TempDir::new()?;
 
         // Run yt-dlp
+        #[cfg(not(windows))]
+        ytdl.download_to_with_python(temporary_dir.path(), crate::helpers::python_path())?;
+        #[cfg(windows)]
         ytdl.download_to(temporary_dir.path())?;
 
         // Return new state

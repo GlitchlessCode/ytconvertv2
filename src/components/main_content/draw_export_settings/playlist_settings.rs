@@ -433,5 +433,3 @@ fn videos_box(cx: &mut Context) {
     .round_box(AppData::theme)
     .on_background(AppData::theme);
 }
-
-// https://www.youtube.com/watch?v=LJLgAX85CbM&list=PLt9E_E6JvXA1gfikKmURgo71PIlWGLAzl&pp=gAQB

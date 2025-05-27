@@ -4,6 +4,24 @@ use vizia::prelude::*;
 
 use crate::{modifiers::ThemeModifiers, theme::Theme};
 
+#[cfg(not(windows))]
+#[inline(always)]
+pub(crate) fn python_path() -> impl AsRef<std::path::Path> {
+    #[cfg(not(feature = "mac-release"))]
+    return "/usr/local/bin/python3";
+
+    #[cfg(feature = "mac-release")]
+    return {
+        match std::env::current_exe()
+            .ok()
+            .and_then(|path| path.parent().map(std::path::PathBuf::from))
+        {
+            Some(path) => path.join("python").join("bin").join("python3"),
+            None => std::path::PathBuf::from("/usr/local/bin/python3"), // Fallback
+        }
+    };
+}
+
 pub fn labelled<T, F, Th>(
     cx: &mut Context,
     theme: Th,

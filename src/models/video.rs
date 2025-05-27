@@ -174,12 +174,19 @@ impl Model for AppVideoData {
 }
 
 fn fetch_video_data(cx: &mut ContextProxy, url: String, yt_dlp: PathBuf) {
-    let event = YoutubeDl::new(&url)
-        .youtube_dl_path(yt_dlp)
+    let mut ytdl = YoutubeDl::new(&url);
+
+    ytdl.youtube_dl_path(yt_dlp)
         .flat_playlist(true)
         .extra_arg("--skip-download")
-        .extra_arg("--no-playlist") // Restrict to videos only
-        .run()
+        .extra_arg("--no-playlist"); // Restrict to videos only
+
+    #[cfg(not(windows))]
+    let run = ytdl.run_with_python(crate::helpers::python_path());
+    #[cfg(windows)]
+    let run = ytdl.run();
+
+    let event = run
         .ok()
         .and_then(|output| match output {
             // If the response is a playlist (should not be possible)

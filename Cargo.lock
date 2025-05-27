@@ -5428,8 +5428,7 @@ dependencies = [
 [[package]]
 name = "youtube_dl"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9689a10ae6a391064930de26cf8a11cf8e844bbfccf2d1f39cd02b10679c14ad"
+source = "git+https://github.com/GlitchlessCode/youtube-dl-rs#2a1939aac0fec6dc96f84fb1a05adc704dc06aa7"
 dependencies = [
  "log",
  "reqwest",

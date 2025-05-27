@@ -8,6 +8,9 @@ on:
         tags:
             - v*.*.*
 
+env:
+    PYTHON_URL: https://github.com/astral-sh/python-build-standalone/releases/download/20250409/cpython-3.12.10+20250409-x86_64-apple-darwin-pgo+lto-full.tar.zst
+
 jobs:
     build-mac:
         runs-on: macos-13
@@ -32,18 +35,37 @@ jobs:
                 dotnet-version: 8.0.x
 
           - name: Build Release Binary
-            run: cargo build --release
+            run: cargo build --release --features mac-release
 
-          - name: Prep For Packaging
+          - name: Prep Binary For Packaging
             run: |
-                mkdir ./PrepRelease/
-                cp ./target/release/ytconvertv2 ./PrepRelease/
-
+                mkdir ./ReleasePrep/
+                cp ./target/release/ytconvertv2 ./ReleasePrep/
+        
+          - name: Download Standalone Python Runtime
+            run: |
+                mkdir ./PythonPrep/
+                mkdir -p ./ReleasePrep/python/bin/
+                curl -L ${{ env.PYTHON_URL }} -o PythonPrep/python.tar.zst
+                tar --use-compress-program=unzstd -xvf ./PythonPrep/python.tar.zst -C ./PythonPrep/
+                cp -Rv ./PythonPrep/python/licenses/ ./ReleasePrep/python/licenses/
+                cp -Rv ./PythonPrep/python/install/lib/ ./ReleasePrep/python/lib/
+                cp -Lv ./PythonPrep/python/install/bin/python3 ./ReleasePrep/python/bin/python3
+          
           - name: Run Velopack
             run: |
                 dotnet tool install -g vpk
-                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./PrepRelease/ -e ytconvertv2 --delta None --noInst
-                vpk upload github -o ./Releases/ --repoUrl https://github.com/${{ github.repository }} --pre --merge --token ${{ secrets.GITHUB_TOKEN }}
+                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 --delta None --noInst --noPortable
+                vpk bundle -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 -o ./Bundle/
+        
+          - name: Create DMG Installer
+            uses: L-Super/create-dmg-actions@v1.0.3
+            with:
+                dmg_name: './Releases/ytconvertv2-osx-Installer'
+                src_dir: './Bundle/ytconvertv2.app'
+
+          - name: Upload Artifacts
+            run: vpk upload github -o ./Releases/ --repoUrl https://github.com/${{ github.repository }} --pre --merge --token ${{ secrets.GITHUB_TOKEN }}
 
     # build-windows:
     #     runs-on: windows-latest
@@ -72,12 +94,12 @@ jobs:
 
     #       - name: Prep for packaging
     #         run: |
-    #             mkdir .\PrepRelease\
-    #             mv .\target\release\ytconvertv2.exe .\PrepRelease\ytconvertv2.exe
+    #             mkdir .\ReleasePrep\
+    #             mv .\target\release\ytconvertv2.exe .\ReleasePrep\ytconvertv2.exe
 
     #       - name: Run Velopack
     #         run: |
     #             dotnet tool install -g vpk
-    #             vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p .\PrepRelease\ -e ytconvertv2.exe --delta None
+    #             vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p .\ReleasePrep\ -e ytconvertv2.exe --delta None
     #             vpk upload github -o .\Releases\ --repoUrl https://github.com/${{ github.repository }} --pre --merge --token ${{ secrets.GITHUB_TOKEN }}
                 
