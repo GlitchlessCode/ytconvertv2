@@ -28,6 +28,9 @@ jobs:
             uses: actions-rs/toolchain@v1.0.6
             with:
                 toolchain: 1.84
+        
+          - name: Enable Rust Cache
+            uses: Swatinem/rust-cache@v2
 
           - name: Install DotNet SDK
             uses: actions/setup-dotnet@v4
@@ -55,7 +58,7 @@ jobs:
           - name: Run Velopack
             run: |
                 dotnet tool install -g vpk
-                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 --delta None --noInst --noPortable
+                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 --delta None --noPortable
                 vpk bundle -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 -o ./Bundle/
         
           - name: Create DMG Installer
