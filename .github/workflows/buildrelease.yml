@@ -68,7 +68,7 @@ jobs:
 
           - name: Unpack Portable
             run: |
-                cp ./ReleasePrep/ytconvertv2-osx-Portable.zip ./Bundle/ytconvertv2-osx-Portable.zip
+                cp ./Releases/ytconvertv2-osx-Portable.zip ./Bundle/ytconvertv2-osx-Portable.zip
                 cd ./Bundle
                 unzip ytconvertv2-osx-Portable.zip
 
