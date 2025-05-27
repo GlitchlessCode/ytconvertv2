@@ -58,14 +58,19 @@ jobs:
           - name: Run Velopack
             run: |
                 dotnet tool install -g vpk
-                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 --delta None --noPortable
-                vpk bundle -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 -o ./Bundle/
-        
+                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 --delta None --noInst
+
           - name: Modify Assets File
             run: |
                 brew install jq
-                jq -c 'map(if .Type == "Installer" then .RelativeFileName = "ytconvertv2-osx-Setup.dmg" else . end)' ./Releases/assets.osx.json > ./Releases/tmp
+                jq -c 'map(if .Type == "Installer" then .+{ Type:"Installer", RelativeFileName:"ytconvertv2-osx-Setup.dmg" } else . end)' ./Releases/assets.osx.json > ./Releases/tmp
                 mv ./Releases/tmp ./Releases/assets.osx.json
+
+          - name: Unpack Portable
+            run: |
+                cp ./ReleasePrep/ytconvertv2-osx-Portable.zip ./Bundle/ytconvertv2-osx-Portable.zip
+                cd ./Bundle
+                unzip ytconvertv2-osx-Portable.zip
 
           - name: Create DMG Installer
             uses: L-Super/create-dmg-actions@v1.0.3
