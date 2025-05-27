@@ -61,7 +61,7 @@ jobs:
           - name: Run Velopack
             run: |
                 dotnet tool install -g vpk
-                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 --delta None --noInst
+                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 -i ./icons/ytconvertv2.icns --delta None --noInst
 
           - name: Modify Assets File
             run: |
@@ -129,5 +129,5 @@ jobs:
           - name: Run Velopack
             run: |
                 dotnet tool install -g vpk
-                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p .\ReleasePrep\ -e ytconvertv2.exe --delta None
+                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p .\ReleasePrep\ -e ytconvertv2.exe -i .\icons\ytconvertv2.ico --delta None --noPortable
                 vpk upload github -o .\Releases\ --repoUrl https://github.com/${{ github.repository }} --pre --merge --token ${{ secrets.GITHUB_TOKEN }}

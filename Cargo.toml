@@ -26,9 +26,11 @@ anyhow = "1.0.98"
 num-traits = "0.2.19"
 build_const = "0.2.2"
 velopack = "0.0.1251"
+image = { version = "0.25.6", default-features = false, features = ["png"] }
 
 [profile.dev]
 incremental = true
 
 [build-dependencies]
 build_const = "0.2.2"
+embed-resource = "3.0"

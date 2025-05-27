@@ -1,6 +1,16 @@
 use build_const::ConstWriter;
 
 fn main() {
+    #[cfg(windows)]
+    {
+        if let Err(err) =
+            embed_resource::compile("resources.rc", embed_resource::NONE).manifest_optional()
+        {
+            println!("cargo::error=Could not compile resources.rc due to error: {err}");
+            panic!("Could not compile resources.rc due to error: {err}");
+        }
+    }
+
     let licenses = match std::process::Command::new("cargo")
         .args(["license", "-j"])
         .output()

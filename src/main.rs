@@ -1,3 +1,5 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 use components::{
     about_popup::about_popup, license_popup::license_popup, load_resources::load_resources,
     main_content::main_content, settings_popup::settings_popup, update_ffmpeg::update_ffmpeg,
@@ -13,6 +15,7 @@ use ytconvertv2::{
     data::{FfmpegInstallState, TaskQueue},
     error::{error_popup, ErrorManager},
     events::GlobalEvent,
+    include_bytes_safe,
     licenses::parse_licenses,
     models::all::*,
     modifiers::ThemeModifiers,
@@ -29,6 +32,7 @@ mod components;
 mod velopack_updates;
 
 static CORNER_SIZE: Units = Pixels(6.0);
+static APP_ICON: &[u8] = include_bytes_safe!("img", "ytconvertv2.png");
 
 fn main() -> Result<(), ApplicationError> {
     VelopackApp::build().run();
@@ -47,7 +51,7 @@ fn main() -> Result<(), ApplicationError> {
     let (update_tx, update_rx) = std::sync::mpsc::channel();
 
     let inner_async_tx = async_tx.clone();
-    let app_result = Application::new(move |cx| {
+    let mut app = Application::new(move |cx| {
         let async_tx = inner_async_tx;
         #[cfg(windows)]
         {
@@ -177,8 +181,16 @@ fn main() -> Result<(), ApplicationError> {
     .min_inner_size(Some((600, 400)))
     .inner_size((800, 600))
     .transparent(true)
-    .decorations(false)
-    .run();
+    .decorations(false);
+
+    match image::load_from_memory(APP_ICON) {
+        Ok(icon) => app = app.icon(icon.width(), icon.height(), icon.into_bytes()),
+        Err(err) => {
+            eprintln!("Failed to load window icon due to error: {err}")
+        }
+    }
+
+    let app_result = app.run();
 
     if let Err(_) = async_tx.send(AsyncAppEvent::Shutdown) {
         eprintln!("Failed to send shutdown signal to tokio runtime");
