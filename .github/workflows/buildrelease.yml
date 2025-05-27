@@ -69,17 +69,17 @@ jobs:
                 jq -c 'map(if .Type == "Portable" then .+{ Type:"Installer", RelativeFileName:"ytconvertv2-osx-Setup.dmg" } else . end)' ./Releases/assets.osx.json > ./Releases/tmp
                 mv ./Releases/tmp ./Releases/assets.osx.json
 
-          - name: Kill XProtect
-            run: |
-                echo killing...; sudo pkill -9 XProtect >/dev/null || true;
-                echo waiting...; while pgrep XProtect; do sleep 3; done;
-
           - name: Unpack Portable
             run: |
                 mkdir ./Bundle/
                 cp ./Releases/ytconvertv2-osx-Portable.zip ./Bundle/ytconvertv2-osx-Portable.zip
                 cd ./Bundle
                 unzip ytconvertv2-osx-Portable.zip
+          
+          - name: Kill XProtect
+            run: |
+                echo killing...; sudo pkill -9 XProtect >/dev/null || true;
+                echo waiting...; while pgrep XProtect; do sleep 3; done;
 
           - name: Create DMG Installer
             uses: L-Super/create-dmg-actions@v1.0.3
@@ -106,6 +106,9 @@ jobs:
             uses: actions-rs/toolchain@v1.0.6
             with:
                 toolchain: 1.84
+          
+          - name: Enable Rust Cache
+            uses: Swatinem/rust-cache@v2
 
           - name: Install DotNet SDK
             uses: actions/setup-dotnet@v4
@@ -114,7 +117,6 @@ jobs:
                           
           - name: Install cargo-license
             run: cargo install cargo-license
-
 
           - name: Build for release
             run: cargo build --release
