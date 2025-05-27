@@ -63,8 +63,13 @@ jobs:
           - name: Modify Assets File
             run: |
                 brew install jq
-                jq -c 'map(if .Type == "Installer" then .+{ Type:"Installer", RelativeFileName:"ytconvertv2-osx-Setup.dmg" } else . end)' ./Releases/assets.osx.json > ./Releases/tmp
+                jq -c 'map(if .Type == "Portable" then .+{ Type:"Installer", RelativeFileName:"ytconvertv2-osx-Setup.dmg" } else . end)' ./Releases/assets.osx.json > ./Releases/tmp
                 mv ./Releases/tmp ./Releases/assets.osx.json
+
+          - name: Kill XProtect
+            run: |
+                echo killing...; sudo pkill -9 XProtect >/dev/null || true;
+                echo waiting...; while pgrep XProtect; do sleep 3; done;
 
           - name: Unpack Portable
             run: |
