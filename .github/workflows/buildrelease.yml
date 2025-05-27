@@ -61,10 +61,19 @@ jobs:
                 vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 --delta None --noPortable
                 vpk bundle -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p ./ReleasePrep/ -e ytconvertv2 -o ./Bundle/
         
+          - name: Modify Assets File (Step 1)
+            uses: sergeysova/jq-action@v2
+            id: assets
+            with:
+                cmd: jq -c 'map(if .Type == "Installer" then .RelativeFileName = "ytconvertv2-osx-Setup.dmg" else . end)' ./Releases/assets.osx.json
+            
+          - name: Modify Assets File (Step 2)
+            run: echo "${{ steps.assets.outputs.value }}" > ./Releases/assets.osx.json
+
           - name: Create DMG Installer
             uses: L-Super/create-dmg-actions@v1.0.3
             with:
-                dmg_name: './Releases/ytconvertv2-osx-Installer'
+                dmg_name: './Releases/ytconvertv2-osx-Setup'
                 src_dir: './Bundle/ytconvertv2.app'
 
           - name: Upload Artifacts
