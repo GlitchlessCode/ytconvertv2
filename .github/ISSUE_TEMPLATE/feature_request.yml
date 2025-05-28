@@ -1,0 +1,35 @@
+name: Feature request
+title: "[FEAT] <descriptive-title>"
+description: Suggest an idea for this project
+labels:
+    - enhancement
+assignees: GlitchlessCode
+
+body:
+    - type: textarea
+      id: textarea-0
+      attributes:
+          label: Is your feature request related to a problem? Please describe.
+          description: A clear and concise description of what the problem is
+      validations:
+          required: true
+
+    - type: textarea
+      id: textarea-1
+      attributes:
+          label: Describe the solution you'd like
+          description: A clear and concise description of what you want to happen
+      validations:
+          required: true
+
+    - type: textarea
+      id: textarea-2
+      attributes:
+          label: Describe alternatives you've considered
+          description: A clear and concise description of any alternative solutions or features you've considered
+
+    - type: textarea
+      id: textarea-3
+      attributes:
+          label: Additional context
+          description: Add any other context or screenshots about the feature request here.

@@ -1,0 +1,62 @@
+name: Bug report
+title: "[BUG] <descriptive-title>"
+description: Report a bug in the progam
+labels:
+    - bug
+assignees: GlitchlessCode
+
+body:
+    - type: textarea
+      id: textarea-0
+      attributes:
+          label: Describe the bug
+          description: A clear and concise description of what the bug is
+      validations:
+          required: true
+
+    - type: dropdown
+      id: dropdown-1
+      attributes:
+          label: Operating System(s)
+          options:
+              - MacOS
+              - Windows
+      validations:
+          required: true
+
+    - type: dropdown
+      id: dropdown-2
+      attributes:
+          label: Version
+          options:
+              - Pre v2.0.0
+              - v2.0.0
+      validations:
+          required: true
+
+    - type: textarea
+      id: textarea-3
+      attributes:
+          label: To Reproduce
+          description: What steps can be taken to reproduce the behavior
+          value: |-
+              Steps to reproduce the behavior:
+              1. Go to '...'
+              2. Click on '....'
+              3. Scroll down to '....'
+              4. See error
+    - type: textarea
+      id: textarea-4
+      attributes:
+          label: Expected behaviour
+          description: What behaviour was expected to occur?
+    - type: textarea
+      id: textarea-5
+      attributes:
+          label: Screenshots
+          description: If applicable, add screenshots to help explain your problem
+    - type: textarea
+      id: textarea-6
+      attributes:
+          label: Additional context
+          description: Add any other context about the problem here
