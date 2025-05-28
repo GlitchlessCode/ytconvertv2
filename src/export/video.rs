@@ -156,7 +156,7 @@ impl VideoExporter<Unused> {
             .output_template(format!("{name}"))
             .extra_arg("--no-playlist")
             .extra_arg("--ffmpeg-location")
-            .extra_arg(ffmpeg_sidecar::paths::ffmpeg_path().to_string_lossy());
+            .extra_arg(ffmpeg_path.to_string_lossy());
 
         if settings.export_type.is_audio() {
             ytdl.format("ba");

@@ -19,7 +19,7 @@ jobs:
             uses: nowsprinting/check-version-format-action@v3
             id: version
             with:
-                prefix: 'v'
+                prefix: "v"
 
           - name: Checkout Code
             uses: actions/checkout@v4
@@ -28,7 +28,7 @@ jobs:
             uses: actions-rs/toolchain@v1.0.6
             with:
                 toolchain: 1.84
-        
+
           - name: Enable Rust Cache
             uses: Swatinem/rust-cache@v2
 
@@ -36,6 +36,9 @@ jobs:
             uses: actions/setup-dotnet@v4
             with:
                 dotnet-version: 8.0.x
+          
+          - name: Install cargo-license
+            run: cargo install cargo-license
 
           - name: Build Release Binary
             run: cargo build --release --features mac-release
@@ -44,7 +47,7 @@ jobs:
             run: |
                 mkdir ./ReleasePrep/
                 cp ./target/release/ytconvertv2 ./ReleasePrep/
-        
+
           - name: Download Standalone Python Runtime
             run: |
                 mkdir ./PythonPrep/
@@ -54,7 +57,7 @@ jobs:
                 cp -Rv ./PythonPrep/python/licenses/ ./ReleasePrep/python/licenses/
                 cp -Rv ./PythonPrep/python/install/lib/ ./ReleasePrep/python/lib/
                 cp -Lv ./PythonPrep/python/install/bin/python3 ./ReleasePrep/python/bin/python3
-          
+
           - name: Run Velopack
             run: |
                 dotnet tool install -g vpk
@@ -81,45 +84,48 @@ jobs:
           - name: Create DMG Installer
             uses: L-Super/create-dmg-actions@v1.0.3
             with:
-                dmg_name: './Releases/ytconvertv2-osx-Setup'
-                src_dir: './Bundle/ytconvertv2.app'
+                dmg_name: "./Releases/ytconvertv2-osx-Setup"
+                src_dir: "./Bundle/ytconvertv2.app"
 
           - name: Upload Artifacts
             run: vpk upload github -o ./Releases/ --repoUrl https://github.com/${{ github.repository }} --pre --merge --token ${{ secrets.GITHUB_TOKEN }}
 
-    # build-windows:
-    #     runs-on: windows-latest
-    #     steps:
-    #       - name: Grab Version Tag
-    #         uses: nowsprinting/check-version-format-action@v3
-    #         id: version
-    #         with:
-    #             prefix: 'v'
+    build-windows:
+        runs-on: windows-latest
+        steps:
+          - name: Grab Version Tag
+            uses: nowsprinting/check-version-format-action@v3
+            id: version
+            with:
+                prefix: "v"
 
-    #       - name: Checkout code
-    #         uses: actions/checkout@v4
+          - name: Checkout code
+            uses: actions/checkout@v4
 
-    #       - name: Install Rust Toolchain
-    #         uses: actions-rs/toolchain@v1.0.6
-    #         with:
-    #             toolchain: 1.84
-        
-    #       - name: Install DotNet SDK
-    #         uses: actions/setup-dotnet@v4
-    #         with:
-    #             dotnet-version: 8.0.x
-        
-    #       - name: Build for release
-    #         run: cargo build --release
+          - name: Install Rust Toolchain
+            uses: actions-rs/toolchain@v1.0.6
+            with:
+                toolchain: 1.84
 
-    #       - name: Prep for packaging
-    #         run: |
-    #             mkdir .\ReleasePrep\
-    #             mv .\target\release\ytconvertv2.exe .\ReleasePrep\ytconvertv2.exe
+          - name: Install DotNet SDK
+            uses: actions/setup-dotnet@v4
+            with:
+                dotnet-version: 8.0.x
+                          
+          - name: Install cargo-license
+            run: cargo install cargo-license
 
-    #       - name: Run Velopack
-    #         run: |
-    #             dotnet tool install -g vpk
-    #             vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p .\ReleasePrep\ -e ytconvertv2.exe --delta None
-    #             vpk upload github -o .\Releases\ --repoUrl https://github.com/${{ github.repository }} --pre --merge --token ${{ secrets.GITHUB_TOKEN }}
-                
+
+          - name: Build for release
+            run: cargo build --release
+
+          - name: Prep for packaging
+            run: |
+                mkdir .\ReleasePrep\
+                mv .\target\release\ytconvertv2.exe .\ReleasePrep\ytconvertv2.exe
+
+          - name: Run Velopack
+            run: |
+                dotnet tool install -g vpk
+                vpk pack -u ytconvertv2 -v ${{ steps.version.outputs.full_without_prefix }} -p .\ReleasePrep\ -e ytconvertv2.exe --delta None
+                vpk upload github -o .\Releases\ --repoUrl https://github.com/${{ github.repository }} --pre --merge --token ${{ secrets.GITHUB_TOKEN }}
