@@ -9,7 +9,7 @@ on:
             - v*.*.*
 
 env:
-    PYTHON_URL: https://github.com/astral-sh/python-build-standalone/releases/download/20250409/cpython-3.12.10+20250409-x86_64-apple-darwin-pgo+lto-full.tar.zst
+    PYTHON_URL: https://github.com/astral-sh/python-build-standalone/releases/download/20231002/cpython-3.9.18+20231002-x86_64-apple-darwin-pgo+lto-full.tar.zst
 
 jobs:
     build-mac:
