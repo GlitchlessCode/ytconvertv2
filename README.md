@@ -1,3 +1,6 @@
+> [!WARNING]
+> This repository is henceforth archived and will not be updated. Please be aware that it may be made private at any time.
+
 <h1 align="center">YTConvert</h1>
 
 <p align="center">
